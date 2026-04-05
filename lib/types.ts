@@ -146,6 +146,20 @@ export type DailyNutritionSummary = {
   includedCheckIn: boolean  // true if check-in values raised the baseline
 }
 
+// Stage 6: information architecture
+export type HistoryCategory = 'full_training' | 'reduced' | 'recovery'
+
+export type HistoryItem = {
+  planId: string
+  date: string           // derived from plan.created_at
+  title: string          // today_focus or "Day {rotation_day}"
+  rotationDay: string
+  fuelStatus: string | null
+  trainingReadiness: string | null
+  reasoningSummary: string | null
+  category: HistoryCategory
+}
+
 export type MealCheck = {
   id: string
   user_id: string

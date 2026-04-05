@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const destination = profile?.onboarding_completed_at ? '/check-in' : '/onboarding'
+    const destination = profile?.onboarding_completed_at ? '/home' : '/onboarding'
     return NextResponse.redirect(new URL(destination, request.url))
   }
 

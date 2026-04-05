@@ -53,7 +53,7 @@ export default function OnboardingPage() {
     }))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
     setLoading(true)
@@ -80,7 +80,7 @@ export default function OnboardingPage() {
       return
     }
 
-    router.push('/check-in')
+    router.push('/home')
   }
 
   return (

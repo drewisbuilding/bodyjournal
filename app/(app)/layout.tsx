@@ -1,7 +1,12 @@
+import BottomNav from './_components/bottom-nav'
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
-      {children}
+      <main className="flex-1 pb-20">
+        {children}
+      </main>
+      <BottomNav />
     </div>
   )
 }

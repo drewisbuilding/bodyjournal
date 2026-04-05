@@ -15,5 +15,5 @@ export default async function RootPage() {
 
   if (!profile?.onboarding_completed_at) redirect('/onboarding')
 
-  redirect('/check-in')
+  redirect('/home')
 }
