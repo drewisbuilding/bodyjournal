@@ -1,7 +1,9 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { evaluateReadiness } from '@/lib/ai/evaluate-readiness'
 import { generateDailyPlan } from '@/lib/ai/generate-plan'
+import type { ReadinessResult } from '@/lib/types'
 
 const NEXT_ROTATION: Record<string, string> = {
   A: 'B',
@@ -10,15 +12,30 @@ const NEXT_ROTATION: Record<string, string> = {
   D: 'A',
 }
 
+// Conservative fallback used if readiness evaluation itself throws unexpectedly
+const READINESS_FALLBACK: ReadinessResult = {
+  fuelStatus:        'slightly_underfueled',
+  trainingReadiness: 'reduced',
+  nutritionGap:      'behind',
+  reasoningSummary:  'Readiness evaluation unavailable — defaulting to a reduced plan to be safe.',
+  whatToEatNext:     ['Eat a balanced meal with protein and carbohydrates before training.'],
+  adjustmentNotes:   ['Plan volume reduced as a precaution.'],
+}
+
 export type GeneratePlanResult =
   | { ok: true;  planId: string }
   | { ok: false; error: string }
 
 /**
- * Server action: orchestrates DB reads, AI call, DB writes.
- * Called from the check-in page after the check-in is saved.
- * The check-in is already committed before this runs — it is safe
- * even if this action fails.
+ * Server action: orchestrates DB reads, readiness evaluation, AI plan generation, DB writes.
+ * Check-in is already committed before this runs — safe to call independently.
+ *
+ * Flow:
+ *   load profile + check-in
+ *   → evaluate readiness (deterministic rules + AI reasoning)
+ *   → generate daily plan (AI, receives readiness)
+ *   → insert plan with all readiness fields
+ *   → advance rotation day
  */
 export async function generatePlanAction(checkInId: string): Promise<GeneratePlanResult> {
   const supabase = await createClient()
@@ -51,8 +68,18 @@ export async function generatePlanAction(checkInId: string): Promise<GeneratePla
 
   const rotationDay = profile.current_rotation_day ?? 'A'
 
-  // AI call — pure function, no DB
-  const result = await generateDailyPlan(profile, checkIn, rotationDay)
+  // ── READINESS EVALUATION ────────────────────────────────────────────────────
+  // evaluateReadiness never throws — it always returns a complete result.
+  // If something goes wrong inside it, we fall back to conservative defaults.
+  let readiness: ReadinessResult
+  try {
+    readiness = await evaluateReadiness(checkIn)
+  } catch {
+    readiness = READINESS_FALLBACK
+  }
+
+  // ── PLAN GENERATION ─────────────────────────────────────────────────────────
+  const result = await generateDailyPlan(profile, checkIn, rotationDay, readiness)
 
   if (!result.ok) {
     return { ok: false, error: result.error }
@@ -60,7 +87,7 @@ export async function generatePlanAction(checkInId: string): Promise<GeneratePla
 
   const { data: plan } = result
 
-  // Insert plan row
+  // ── DB WRITE ─────────────────────────────────────────────────────────────────
   const { data: inserted, error: insertError } = await supabase
     .from('plans')
     .insert({
@@ -75,6 +102,13 @@ export async function generatePlanAction(checkInId: string): Promise<GeneratePla
       food_guidance:     plan.foodGuidance,
       coaching_notes:    plan.coachingNotes,
       raw_ai_response:   result.rawResponse ? { text: result.rawResponse } : null,
+      // Stage 3: readiness fields
+      fuel_status:        readiness.fuelStatus,
+      training_readiness: readiness.trainingReadiness,
+      nutrition_gap:      readiness.nutritionGap,
+      reasoning_summary:  readiness.reasoningSummary,
+      what_to_eat_next:   readiness.whatToEatNext,
+      adjustment_notes:   readiness.adjustmentNotes,
     })
     .select('id')
     .single()
@@ -83,7 +117,7 @@ export async function generatePlanAction(checkInId: string): Promise<GeneratePla
     return { ok: false, error: 'Could not save plan to database' }
   }
 
-  // Advance rotation — fire after successful insert only
+  // Advance rotation — only after successful insert
   await supabase
     .from('profiles')
     .update({ current_rotation_day: NEXT_ROTATION[rotationDay] ?? 'A' })

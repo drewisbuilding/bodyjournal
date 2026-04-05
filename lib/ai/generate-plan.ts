@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { SYSTEM_PROMPT, buildUserPayload } from './prompt'
 import { extractAndParse, type DailyPlanResponse } from './schema'
-import type { Profile, CheckIn } from '@/lib/types'
+import type { Profile, CheckIn, ReadinessResult } from '@/lib/types'
 
 // Instantiated once — the SDK reads ANTHROPIC_API_KEY from env automatically
 const client = new Anthropic()
@@ -18,9 +18,10 @@ export type GenerateResult =
 export async function generateDailyPlan(
   profile: Profile,
   checkIn: CheckIn,
-  rotationDay: string
+  rotationDay: string,
+  readiness: ReadinessResult
 ): Promise<GenerateResult> {
-  const userPayload = buildUserPayload(profile, checkIn, rotationDay)
+  const userPayload = buildUserPayload(profile, checkIn, rotationDay, readiness)
 
   let rawResponse: string | undefined
 

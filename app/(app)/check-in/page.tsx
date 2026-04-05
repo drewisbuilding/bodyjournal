@@ -6,6 +6,14 @@ import { createClient } from '@/lib/supabase/client'
 import { logEvent } from '@/lib/behavior'
 import { generatePlanAction } from '@/app/actions/generate-plan'
 
+function inferTimeOfDay(): string {
+  const hour = new Date().getHours()
+  if (hour < 11) return 'morning'
+  if (hour < 13) return 'midday'
+  if (hour < 17) return 'afternoon'
+  return 'evening'
+}
+
 export default function CheckInPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -19,6 +27,11 @@ export default function CheckInPage() {
     body_weight_lbs: '',
     meals_so_far: '',
     extra_notes: '',
+    // Stage 3: fuel fields
+    time_of_day: inferTimeOfDay(),
+    protein_so_far_g: '',
+    calories_so_far: '',
+    symptoms_today: '',
   })
   const [started, setStarted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -62,16 +75,21 @@ export default function CheckInPage() {
     const { data: saved, error: insertError } = await supabase
       .from('check_ins')
       .upsert({
-        user_id: user.id,
-        date: today,
-        gym_today: form.gym_today,
-        energy_level: form.energy_level !== '' ? Number(form.energy_level) : null,
-        pain_level: form.pain_level !== '' ? Number(form.pain_level) : null,
-        pain_location: form.pain_location || null,
+        user_id:                user.id,
+        date:                   today,
+        gym_today:              form.gym_today,
+        energy_level:           form.energy_level !== '' ? Number(form.energy_level) : null,
+        pain_level:             form.pain_level !== '' ? Number(form.pain_level) : null,
+        pain_location:          form.pain_location || null,
         time_available_minutes: form.time_available_minutes ? Number(form.time_available_minutes) : null,
-        body_weight_lbs: form.body_weight_lbs ? Number(form.body_weight_lbs) : null,
-        meals_so_far: form.meals_so_far || null,
-        extra_notes: form.extra_notes || null,
+        body_weight_lbs:        form.body_weight_lbs ? Number(form.body_weight_lbs) : null,
+        meals_so_far:           form.meals_so_far || null,
+        extra_notes:            form.extra_notes || null,
+        // Stage 3
+        time_of_day:            form.time_of_day,
+        protein_so_far_g:       form.protein_so_far_g ? Number(form.protein_so_far_g) : null,
+        calories_so_far:        form.calories_so_far ? Number(form.calories_so_far) : null,
+        symptoms_today:         form.symptoms_today || null,
       }, { onConflict: 'user_id,date' })
       .select('id')
       .single()
@@ -158,6 +176,92 @@ export default function CheckInPage() {
           />
         </Section>
 
+        {/* ── Fuel section ── */}
+        <div className="border-t border-neutral-800 pt-6">
+          <p className="mb-4 text-sm font-medium text-neutral-300">How are you fueled?</p>
+          <div className="flex flex-col gap-5">
+
+            {/* Time of day */}
+            <Section label="Time of day">
+              <select
+                value={form.time_of_day}
+                onChange={e => { set('time_of_day', e.target.value); handleFieldFilled('time_of_day') }}
+                className={selectCls}
+              >
+                <option value="morning">Morning (before 11am)</option>
+                <option value="midday">Midday (11am–1pm)</option>
+                <option value="afternoon">Afternoon (1pm–5pm)</option>
+                <option value="evening">Evening (after 5pm)</option>
+              </select>
+            </Section>
+
+            {/* Meals so far */}
+            <Section label="Meals so far today">
+              <textarea
+                value={form.meals_so_far}
+                onChange={e => set('meals_so_far', e.target.value)}
+                onBlur={() =>
+                  form.meals_so_far
+                    ? handleFieldFilled('meals_so_far')
+                    : handleFieldSkipped('meals_so_far')
+                }
+                placeholder="e.g. Eggs and oats for breakfast, chicken salad for lunch"
+                rows={3}
+                className={`${inputCls} resize-none`}
+              />
+            </Section>
+
+            {/* Protein + calories */}
+            <div className="grid grid-cols-2 gap-3">
+              <Section label="Protein so far (g)">
+                <input
+                  type="number"
+                  value={form.protein_so_far_g}
+                  onChange={e => set('protein_so_far_g', e.target.value)}
+                  onBlur={() =>
+                    form.protein_so_far_g
+                      ? handleFieldFilled('protein_so_far_g')
+                      : handleFieldSkipped('protein_so_far_g')
+                  }
+                  placeholder="e.g. 60"
+                  className={inputCls}
+                />
+              </Section>
+              <Section label="Calories so far">
+                <input
+                  type="number"
+                  value={form.calories_so_far}
+                  onChange={e => set('calories_so_far', e.target.value)}
+                  onBlur={() =>
+                    form.calories_so_far
+                      ? handleFieldFilled('calories_so_far')
+                      : handleFieldSkipped('calories_so_far')
+                  }
+                  placeholder="e.g. 800"
+                  className={inputCls}
+                />
+              </Section>
+            </div>
+
+            {/* Symptoms */}
+            <Section label="Symptoms today (optional)">
+              <input
+                type="text"
+                value={form.symptoms_today}
+                onChange={e => set('symptoms_today', e.target.value)}
+                onBlur={() =>
+                  form.symptoms_today
+                    ? handleFieldFilled('symptoms_today')
+                    : handleFieldSkipped('symptoms_today')
+                }
+                placeholder="e.g. Dizzy, weak, sore, tired"
+                className={inputCls}
+              />
+            </Section>
+
+          </div>
+        </div>
+
         {/* Time available */}
         <Section label="Time available (minutes)">
           <input
@@ -188,22 +292,6 @@ export default function CheckInPage() {
             }
             placeholder="192.0"
             className={inputCls}
-          />
-        </Section>
-
-        {/* Meals so far */}
-        <Section label="Meals so far today (optional)">
-          <textarea
-            value={form.meals_so_far}
-            onChange={e => set('meals_so_far', e.target.value)}
-            onBlur={() =>
-              form.meals_so_far
-                ? handleFieldFilled('meals_so_far')
-                : handleFieldSkipped('meals_so_far')
-            }
-            placeholder="e.g. Eggs and oats for breakfast, chicken salad for lunch"
-            rows={3}
-            className={`${inputCls} resize-none`}
           />
         </Section>
 
@@ -253,7 +341,7 @@ export default function CheckInPage() {
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">{label}</p>
       {children}
     </div>
@@ -303,3 +391,6 @@ function ScaleButtons({
 
 const inputCls =
   'w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-600 outline-none focus:border-neutral-600'
+
+const selectCls =
+  'w-full rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-neutral-600'

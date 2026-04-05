@@ -3,6 +3,20 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import type { Plan, NutritionTargets } from '@/lib/types'
 
+const FUEL_LABELS: Record<string, { label: string; color: string }> = {
+  ready:                    { label: 'Ready',                  color: 'text-green-400' },
+  slightly_underfueled:     { label: 'Slightly underfueled',   color: 'text-yellow-400' },
+  significantly_underfueled:{ label: 'Significantly underfueled', color: 'text-orange-400' },
+  recovery_only:            { label: 'Recovery only',          color: 'text-red-400' },
+}
+
+const READINESS_LABELS: Record<string, string> = {
+  full:          'Full session',
+  reduced:       'Reduced session',
+  eat_first:     'Eat first, then train',
+  recovery_only: 'Recovery only — no training',
+}
+
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -20,7 +34,9 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
   if (!plan) notFound()
 
   const p = plan as Plan
-  const nutrition = p.nutrition_targets as NutritionTargets | null
+  const nutrition  = p.nutrition_targets as NutritionTargets | null
+  const fuelMeta   = p.fuel_status ? (FUEL_LABELS[p.fuel_status] ?? null) : null
+  const eatFirst   = p.training_readiness === 'eat_first'
 
   return (
     <div className="mx-auto w-full max-w-lg px-4 py-12">
@@ -37,6 +53,57 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div className="flex flex-col gap-6">
+
+        {/* ── Readiness banner — shown first if eat_first or recovery ── */}
+        {(p.fuel_status || p.training_readiness) && (
+          <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4">
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-neutral-500">
+              Readiness
+            </p>
+            <div className="flex flex-col gap-3">
+              {fuelMeta && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-400">Fuel status</span>
+                  <span className={`text-sm font-medium ${fuelMeta.color}`}>{fuelMeta.label}</span>
+                </div>
+              )}
+              {p.training_readiness && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-400">Training readiness</span>
+                  <span className="text-sm font-medium text-neutral-200">
+                    {READINESS_LABELS[p.training_readiness] ?? p.training_readiness}
+                  </span>
+                </div>
+              )}
+              {p.nutrition_gap && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-400">Nutrition gap</span>
+                  <span className="text-sm font-medium text-neutral-200">
+                    {p.nutrition_gap.replace('_', ' ')}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Eat first — prominent block before everything else ── */}
+        {eatFirst && p.what_to_eat_next && p.what_to_eat_next.length > 0 && (
+          <div className="rounded-xl border border-orange-800 bg-orange-950/40 p-4">
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-orange-400">
+              Eat before training
+            </p>
+            <List items={p.what_to_eat_next} />
+          </div>
+        )}
+
+        {/* ── Why today looks like this ── */}
+        {p.reasoning_summary && (
+          <Card label="Why today looks like this">
+            <p className="text-sm leading-relaxed text-neutral-300">{p.reasoning_summary}</p>
+          </Card>
+        )}
+
         {/* Mobility */}
         {p.mobility && p.mobility.length > 0 && (
           <Card label="Mobility">
@@ -57,6 +124,13 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
           </Card>
         )}
 
+        {/* Adjustment notes */}
+        {p.adjustment_notes && p.adjustment_notes.length > 0 && (
+          <Card label="Adjustments for today">
+            <List items={p.adjustment_notes} />
+          </Card>
+        )}
+
         {/* Nutrition */}
         {nutrition && (
           <Card label="Nutrition targets">
@@ -64,6 +138,13 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
               <Stat label="Calories" value={String(nutrition.calories)} />
               <Stat label="Protein" value={`${nutrition.proteinGrams}g`} />
             </div>
+          </Card>
+        )}
+
+        {/* What to eat next — shown again in nutrition context if not eat_first */}
+        {!eatFirst && p.what_to_eat_next && p.what_to_eat_next.length > 0 && (
+          <Card label="What to eat next">
+            <List items={p.what_to_eat_next} />
           </Card>
         )}
 
@@ -80,6 +161,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
             <List items={p.coaching_notes} />
           </Card>
         )}
+
       </div>
 
       <div className="mt-10">
