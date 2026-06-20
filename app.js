@@ -1,4 +1,4 @@
-// P90X Lite - Application Logic with Personalization
+// Body Journal - Application Logic with Personalization
 
 class App {
   constructor() {
@@ -24,7 +24,7 @@ class App {
   }
 
   loadProfile() {
-    const profile = localStorage.getItem('p90x_profile');
+    const profile = localStorage.getItem('bj_profile');
     if (profile) {
       this.state.profile = JSON.parse(profile);
     }
@@ -32,7 +32,7 @@ class App {
 
   saveProfile(profile) {
     this.state.profile = profile;
-    localStorage.setItem('p90x_profile', JSON.stringify(profile));
+    localStorage.setItem('bj_profile', JSON.stringify(profile));
   }
 
   completeOnboarding(fitnessLevel, equipment, goal) {
@@ -49,7 +49,7 @@ class App {
   }
 
   loadMeta() {
-    const meta = localStorage.getItem('p90x_meta');
+    const meta = localStorage.getItem('bj_meta');
     if (meta) {
       const parsed = JSON.parse(meta);
       this.state.currentDay = parsed.currentDay || 1;
@@ -59,14 +59,14 @@ class App {
   }
 
   saveMeta() {
-    localStorage.setItem('p90x_meta', JSON.stringify({
+    localStorage.setItem('bj_meta', JSON.stringify({
       currentDay: this.state.currentDay,
       intensity: this.state.intensity
     }));
   }
 
   loadLog() {
-    const key = `p90x_day_${this.state.viewDay}_${this.state.intensity}`;
+    const key = `bj_day_${this.state.viewDay}_${this.state.intensity}`;
     const log = localStorage.getItem(key);
     if (log) {
       this.state.log = JSON.parse(log);
@@ -100,7 +100,7 @@ class App {
   saveLog() {
     if (!this.state.log) return;
 
-    const key = `p90x_day_${this.state.viewDay}_${this.state.intensity}`;
+    const key = `bj_day_${this.state.viewDay}_${this.state.intensity}`;
     localStorage.setItem(key, JSON.stringify(this.state.log));
   }
 
@@ -115,7 +115,7 @@ class App {
 
   setIntensity(intensity) {
     // Check if there's an existing log for the other intensity
-    const otherKey = `p90x_day_${this.state.viewDay}_${intensity}`;
+    const otherKey = `bj_day_${this.state.viewDay}_${intensity}`;
     const existingLog = localStorage.getItem(otherKey);
 
     this.state.intensity = intensity;
@@ -263,7 +263,7 @@ class App {
       <div class="modal-overlay">
         <div class="modal onboarding-modal">
           <div class="modal-header">
-            <h2>Welcome to P90X Lite</h2>
+            <h2>Welcome to Body Journal</h2>
             <p>Let's personalize your program</p>
           </div>
 
@@ -548,7 +548,7 @@ class App {
     const dayButtons = [];
     for (let day = 1; day <= 90; day++) {
       const dayInfo = getDayInfo(day);
-      const key = `p90x_day_${day}_${this.state.intensity}`;
+      const key = `bj_day_${day}_${this.state.intensity}`;
       const log = localStorage.getItem(key);
       const isCompleted = log ? JSON.parse(log).completed : false;
       let cssClass = '';

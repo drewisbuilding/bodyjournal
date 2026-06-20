@@ -1,7 +1,7 @@
 {
-  "name": "P90X Lite",
-  "short_name": "P90X Lite",
-  "description": "Personal 90-day workout tracker with light and heavy intensity tracks",
+  "name": "Body Journal",
+  "short_name": "Body Journal",
+  "description": "Personal 90-day workout tracker with light and heavy intensity",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

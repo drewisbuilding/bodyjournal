@@ -1,4 +1,4 @@
-// P90X Lite - Workout Program Definition
+// Body Journal - Workout Program Definition
 
 const PHASES = [
   { phase: 1, name: 'Foundation', startDay: 1, endDay: 30, description: 'Build base strength and movement patterns' },
