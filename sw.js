@@ -1,9 +1,10 @@
-const CACHE_NAME = 'body-journal-v1';
+const CACHE_NAME = 'body-journal-v2';
 const ASSETS_TO_CACHE = [
   './',
   'index.html',
   'styles.css',
   'program.js',
+  'profiles.js',
   'app.js',
   'manifest.json'
 ];

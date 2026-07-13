@@ -333,11 +333,16 @@ function getPersonalizedExercises(workoutType, intensity, userProfile) {
     return null;
   }
 
-  const equipmentSet = userProfile.equipment.length === 0 ? 'home_minimal' :
-    userProfile.equipment.includes('barbell') && userProfile.equipment.includes('pull_up_bar') ? 'full_gym' :
-    userProfile.equipment.includes('dumbbells') ? 'dumbbells' :
-    userProfile.equipment.includes('cable_machine') ? 'cable' :
-    'home_minimal';
+  const eq = userProfile.equipment;
+  const has = (item) => eq.includes(item);
+  const equipmentSet =
+    eq.length === 0                                      ? 'home_minimal' :
+    has('barbell')                                       ? 'full_gym'     :
+    has('dumbbells') && has('cable_machine')             ? 'full_gym'     :
+    has('dumbbells')                                     ? 'dumbbells'    :
+    has('cable_machine')                                 ? 'cable'        :
+    (has('pull_up_bar') || has('bench'))                 ? 'home_minimal' :
+                                                           'home_minimal';
 
   const exerciseKeys = {
     push: ['push_primary_press', 'push_incline', 'push_secondary_horizontal', 'push_secondary_overhead', 'push_tertiary_lateral_raise', 'push_tertiary_triceps'],

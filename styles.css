@@ -132,11 +132,22 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* View container — fills remaining space below top bar */
+.view-container {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
 /* Today view */
 .today-view {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .day-hero {
@@ -170,6 +181,13 @@ body {
 .day-phase {
   font-size: 12px;
   color: var(--ink-dim);
+}
+
+.day-actual-date {
+  font-size: 11px;
+  color: var(--ink-dim);
+  margin-top: 2px;
+  font-style: italic;
 }
 
 .day-subtitle {
@@ -299,32 +317,61 @@ body {
 
 /* Calendar view */
 .calendar-view {
-  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.calendar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 16px;
+  min-height: 0;
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
 .day-button {
-  aspect-ratio: 1;
   background-color: var(--bg-raised);
   border: 1px solid var(--border);
   color: var(--ink);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 500;
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.2s;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 6px 2px;
+  min-height: 52px;
+  gap: 2px;
+}
+
+.day-btn-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.day-btn-date {
+  font-size: 9px;
+  color: var(--ink-faint);
+  font-family: 'Inter', sans-serif;
+  line-height: 1;
+}
+
+.today .day-btn-date,
+.active .day-btn-date {
+  color: inherit;
+  opacity: 0.7;
 }
 
 .day-button:hover {
@@ -358,11 +405,14 @@ body {
 }
 
 .calendar-legend {
+  flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
   font-size: 12px;
   color: var(--ink-dim);
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
 }
 
 .legend-item {
@@ -847,5 +897,114 @@ body {
 /* Edit profile modal */
 .edit-profile-modal {
   max-height: 85vh;
+}
+
+/* Form hint */
+.form-hint {
+  color: var(--ink-dim);
+  font-size: 0.8rem;
+  margin-top: 8px;
+}
+
+/* Warmup / Cooldown sections */
+.phase-section {
+  margin: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.phase-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  background-color: var(--bg-raised);
+  gap: 8px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.warmup-section .phase-header {
+  border-left: 3px solid var(--green);
+}
+
+.cooldown-section .phase-header {
+  border-left: 3px solid #5B8DB8;
+}
+
+.phase-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex: 1;
+}
+
+.warmup-section .phase-title {
+  color: var(--green);
+}
+
+.cooldown-section .phase-title {
+  color: #5B8DB8;
+}
+
+.phase-duration {
+  font-size: 11px;
+  color: var(--ink-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.phase-toggle {
+  font-size: 12px;
+  color: var(--ink-dim);
+  transition: transform 0.2s;
+  display: inline-block;
+  line-height: 1;
+}
+
+.phase-content {
+  background-color: var(--bg);
+}
+
+.phase-content.collapsed {
+  display: none;
+}
+
+.stretch-row {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stretch-row:last-child {
+  border-bottom: none;
+}
+
+.stretch-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.stretch-detail {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.stretch-duration {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--orange);
+  flex-shrink: 0;
+}
+
+.stretch-notes {
+  font-size: 12px;
+  color: var(--ink-dim);
 }
 

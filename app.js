@@ -4,13 +4,15 @@ class App {
   constructor() {
     this.state = {
       currentDay: 1,
+      startDate: null,
       intensity: 'light',
       view: 'today',
       viewDay: 1,
       log: null,
       profile: null,
       showOnboarding: false,
-      showSettings: false
+      showSettings: false,
+      showEditProfile: false
     };
 
     this.loadProfile();
@@ -35,15 +37,26 @@ class App {
     localStorage.setItem('bj_profile', JSON.stringify(profile));
   }
 
+  calcCurrentDay(startDate) {
+    if (!startDate) return 1;
+    const start = new Date(startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    const diff = Math.floor((today - start) / 86400000);
+    return Math.max(1, Math.min(90, diff + 1));
+  }
+
   completeOnboarding(fitnessLevel, equipment, goal) {
-    const profile = {
-      fitnessLevel,
-      equipment,
-      goal
-    };
+    const profile = { fitnessLevel, equipment, goal };
     this.saveProfile(profile);
     this.state.showOnboarding = false;
-    this.loadMeta();
+    if (!this.state.startDate) {
+      this.state.startDate = new Date().toISOString().split('T')[0];
+      this.state.currentDay = 1;
+      this.state.viewDay = 1;
+    }
+    this.saveMeta();
     this.loadLog();
     this.render();
   }
@@ -52,15 +65,29 @@ class App {
     const meta = localStorage.getItem('bj_meta');
     if (meta) {
       const parsed = JSON.parse(meta);
-      this.state.currentDay = parsed.currentDay || 1;
       this.state.intensity = parsed.intensity || 'light';
+
+      if (parsed.startDate) {
+        this.state.startDate = parsed.startDate;
+        this.state.currentDay = this.calcCurrentDay(parsed.startDate);
+      } else if (parsed.currentDay) {
+        // migrate: backfill startDate from saved currentDay
+        const start = new Date();
+        start.setDate(start.getDate() - (parsed.currentDay - 1));
+        this.state.startDate = start.toISOString().split('T')[0];
+        this.state.currentDay = parsed.currentDay;
+        this.saveMeta();
+      } else {
+        this.state.currentDay = 1;
+      }
+
       this.state.viewDay = this.state.currentDay;
     }
   }
 
   saveMeta() {
     localStorage.setItem('bj_meta', JSON.stringify({
-      currentDay: this.state.currentDay,
+      startDate: this.state.startDate,
       intensity: this.state.intensity
     }));
   }
@@ -80,16 +107,10 @@ class App {
     if (!dayInfo) return null;
 
     if (dayInfo.isRest) {
-      return {
-        completed: false,
-        intensity: this.state.intensity,
-        exercises: []
-      };
+      return { completed: false, intensity: this.state.intensity, exercises: [] };
     }
 
-    // Use personalized exercises based on user profile
     const exercises = getPersonalizedExercises(dayInfo.workoutType, this.state.intensity, this.state.profile);
-    
     return {
       completed: false,
       intensity: this.state.intensity,
@@ -99,7 +120,6 @@ class App {
 
   saveLog() {
     if (!this.state.log) return;
-
     const key = `bj_day_${this.state.viewDay}_${this.state.intensity}`;
     localStorage.setItem(key, JSON.stringify(this.state.log));
   }
@@ -114,22 +134,15 @@ class App {
   }
 
   setIntensity(intensity) {
-    // Check if there's an existing log for the other intensity
     const otherKey = `bj_day_${this.state.viewDay}_${intensity}`;
     const existingLog = localStorage.getItem(otherKey);
-
     this.state.intensity = intensity;
     if (existingLog) {
       this.state.log = JSON.parse(existingLog);
     } else {
       this.state.log = this.generateLog();
     }
-
-    // If on today view, also update saved intensity
-    if (this.state.view === 'today') {
-      this.saveMeta();
-    }
-
+    if (this.state.view === 'today') this.saveMeta();
     this.render();
   }
 
@@ -154,17 +167,13 @@ class App {
 
   closeSettings() {
     this.state.showSettings = false;
+    this.state.showEditProfile = false;
     this.render();
   }
 
   updateProfile(fitnessLevel, equipment, goal) {
-    const profile = {
-      fitnessLevel,
-      equipment,
-      goal
-    };
+    const profile = { fitnessLevel, equipment, goal };
     this.saveProfile(profile);
-    // Regenerate logs for current day with new profile
     this.loadLog();
     this.closeSettings();
   }
@@ -172,7 +181,6 @@ class App {
   resetProgress() {
     if (confirm('Delete all progress and start over? This cannot be undone.')) {
       localStorage.clear();
-      this.state.showSettings = false;
       location.reload();
     }
   }
@@ -184,18 +192,8 @@ class App {
 
   completeDay() {
     if (!this.state.log) return;
-
     this.state.log.completed = true;
     this.saveLog();
-
-    // Only advance day if viewing current day
-    if (this.state.viewDay === this.state.currentDay && this.state.currentDay < 90) {
-      this.state.currentDay++;
-      this.saveMeta();
-      this.state.viewDay = this.state.currentDay;
-      this.loadLog();
-    }
-
     this.showStatus('Day Complete!');
     this.render();
   }
@@ -216,46 +214,116 @@ class App {
     statusEl.className = 'status-message';
     statusEl.textContent = message;
     document.body.appendChild(statusEl);
+    setTimeout(() => { statusEl.remove(); }, 1500);
+  }
 
-    setTimeout(() => {
-      statusEl.remove();
-    }, 1500);
+  getDateForDay(dayNum) {
+    if (!this.state.startDate) return null;
+    const date = new Date(this.state.startDate);
+    date.setDate(date.getDate() + dayNum - 1);
+    return date;
+  }
+
+  formatDateLong(date) {
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  }
+
+  formatDateShort(date) {
+    return `${date.getMonth() + 1}/${date.getDate()}`;
   }
 
   renderTodayView() {
     const dayInfo = getDayInfo(this.state.viewDay);
     if (!dayInfo) return '';
 
-    const html = `
+    const date = this.getDateForDay(this.state.viewDay);
+    const dateStr = date ? this.formatDateLong(date) : '';
+
+    return `
       <div class="today-view">
         <div class="day-hero">
           <div class="day-hero-header">
             <div class="day-number">${dayInfo.day}</div>
             <div>
               <div class="day-label">${WORKOUT_META[dayInfo.workoutType].label}</div>
-              <div class="day-phase">${dayInfo.phaseName} Phase • Week ${dayInfo.weekNumber}</div>
+              <div class="day-phase">${dayInfo.phaseName} Phase · Week ${dayInfo.weekNumber}</div>
+              ${dateStr ? `<div class="day-actual-date">${dateStr}</div>` : ''}
             </div>
           </div>
           <div class="day-subtitle">${WORKOUT_META[dayInfo.workoutType].subtitle}</div>
         </div>
 
         <div class="content">
-          ${dayInfo.isRest ? this.renderRestDay() : this.renderExercises()}
+          ${dayInfo.isRest ? this.renderRestDay() : `
+            ${this.renderWarmup(dayInfo.workoutType)}
+            ${this.renderExercises()}
+            ${this.renderCooldown(dayInfo.workoutType)}
+          `}
         </div>
 
-        ${this.state.viewDay !== this.state.currentDay ? `<div class="jump-today" data-action="jump-today">Jump to Today (Day ${this.state.currentDay})</div>` : ''}
+        ${this.state.viewDay !== this.state.currentDay
+          ? `<div class="jump-today" data-action="jump-today">Jump to Today (Day ${this.state.currentDay})</div>`
+          : ''}
 
         <div class="actions">
-          ${dayInfo.isRest ?
-            `<button class="btn primary ${this.state.intensity}" data-action="complete-day">Mark Complete</button>` :
-            `<button class="btn" data-action="save-progress">Save Progress</button>
-             <button class="btn primary ${this.state.intensity}" data-action="complete-day">Complete Day</button>`
+          ${dayInfo.isRest
+            ? `<button class="btn primary ${this.state.intensity}" data-action="complete-day">Mark Complete</button>`
+            : `<button class="btn" data-action="save-progress">Save Progress</button>
+               <button class="btn primary ${this.state.intensity}" data-action="complete-day">Complete Day</button>`
           }
         </div>
       </div>
     `;
+  }
 
-    return html;
+  renderWarmup(workoutType) {
+    const warmup = WARMUP[workoutType];
+    if (!warmup) return '';
+    return `
+      <div class="phase-section warmup-section">
+        <div class="phase-header" data-action="toggle-section" data-section="warmup">
+          <div class="phase-title">Warm-Up</div>
+          <div class="phase-duration">~5-8 min</div>
+          <span class="phase-toggle">▾</span>
+        </div>
+        <div class="phase-content" id="warmup-content">
+          ${warmup.map(item => `
+            <div class="stretch-row">
+              <div class="stretch-name">${item.name}</div>
+              <div class="stretch-detail">
+                <span class="stretch-duration">${item.duration}</span>
+                <span class="stretch-notes">${item.notes}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  renderCooldown(workoutType) {
+    const cooldown = COOLDOWN[workoutType];
+    if (!cooldown) return '';
+    return `
+      <div class="phase-section cooldown-section">
+        <div class="phase-header" data-action="toggle-section" data-section="cooldown">
+          <div class="phase-title">Cool-Down & Stretch</div>
+          <div class="phase-duration">~5-10 min</div>
+          <span class="phase-toggle">▾</span>
+        </div>
+        <div class="phase-content" id="cooldown-content">
+          ${cooldown.map(item => `
+            <div class="stretch-row">
+              <div class="stretch-name">${item.name}</div>
+              <div class="stretch-detail">
+                <span class="stretch-duration">${item.duration}</span>
+                <span class="stretch-notes">${item.notes}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
   }
 
   renderOnboarding() {
@@ -274,17 +342,17 @@ class App {
                 <label class="radio-label">
                   <input type="radio" name="fitness" value="beginner" checked>
                   <span>Beginner</span>
-                  <div class="radio-desc">New to training or returning</div>
+                  <div class="radio-desc">New to training or returning after a break</div>
                 </label>
                 <label class="radio-label">
                   <input type="radio" name="fitness" value="intermediate">
                   <span>Intermediate</span>
-                  <div class="radio-desc">Training 1-2 years regularly</div>
+                  <div class="radio-desc">Training consistently 1-2 years</div>
                 </label>
                 <label class="radio-label">
                   <input type="radio" name="fitness" value="advanced">
                   <span>Advanced</span>
-                  <div class="radio-desc">2+ years consistent training</div>
+                  <div class="radio-desc">2+ years of consistent training</div>
                 </label>
               </div>
             </div>
@@ -306,14 +374,14 @@ class App {
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" name="equipment" value="cable_machine">
-                  <span>Cable Machine</span>
+                  <span>Cable / Machines</span>
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" name="equipment" value="bench">
                   <span>Weight Bench</span>
                 </label>
               </div>
-              <p style="color: var(--text-dim); font-size: 0.85rem; margin-top: 8px;">Select all that apply. If none selected, bodyweight exercises will be used.</p>
+              <p class="form-hint">Select all that apply. Leave empty for bodyweight-only exercises.</p>
             </div>
 
             <div class="form-group">
@@ -327,7 +395,7 @@ class App {
                 <label class="radio-label">
                   <input type="radio" name="goal" value="cut">
                   <span>Get Fit / Cut</span>
-                  <div class="radio-desc">Maintain strength while leaning</div>
+                  <div class="radio-desc">Maintain strength while leaning out</div>
                 </label>
                 <label class="radio-label">
                   <input type="radio" name="goal" value="endurance">
@@ -349,6 +417,9 @@ class App {
 
     const tierDesc = DIFFICULTY_TIERS[this.state.profile.fitnessLevel];
     const goalMsg = getGoalMessage(this.state.profile.goal);
+    const startDateStr = this.state.startDate
+      ? new Date(this.state.startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      : 'Not set';
 
     return `
       <div class="modal-overlay" data-action="close-settings">
@@ -382,6 +453,7 @@ class App {
             <div class="setting-section">
               <h3>Progress</h3>
               <div class="progress-info">
+                <div>Started: <strong>${startDateStr}</strong></div>
                 <div>Current Day: <strong>${this.state.currentDay} / 90</strong></div>
                 <div>${Math.round((this.state.currentDay / 90) * 100)}% complete</div>
               </div>
@@ -441,7 +513,7 @@ class App {
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" name="equipment" value="cable_machine" ${this.state.profile.equipment.includes('cable_machine') ? 'checked' : ''}>
-                  <span>Cable Machine</span>
+                  <span>Cable / Machines</span>
                 </label>
                 <label class="checkbox-label">
                   <input type="checkbox" name="equipment" value="bench" ${this.state.profile.equipment.includes('bench') ? 'checked' : ''}>
@@ -490,7 +562,7 @@ class App {
   renderExercises() {
     if (!this.state.log || !this.state.log.exercises) return '';
 
-    const html = `
+    return `
       <div class="exercises-list">
         ${this.state.log.exercises.map((exercise, exIdx) => `
           <div class="exercise-card">
@@ -498,7 +570,7 @@ class App {
               <div class="exercise-name">${exercise.name}</div>
               <div class="exercise-target">
                 ${exercise.target.sets}×${exercise.target.reps}
-                ${exercise.target.rest ? `@${exercise.target.rest}s` : ''}
+                ${exercise.target.rest ? ` · ${exercise.target.rest}s rest` : ''}
               </div>
             </div>
             <div class="sets-grid">
@@ -507,8 +579,9 @@ class App {
                   <div class="set-number">S${setIdx + 1}</div>
                   <input
                     type="text"
+                    inputmode="decimal"
                     class="set-input"
-                    placeholder="Weight"
+                    placeholder="lbs"
                     value="${set.weight}"
                     data-action="update-set"
                     data-exercise="${exIdx}"
@@ -517,8 +590,9 @@ class App {
                   >
                   <input
                     type="text"
+                    inputmode="numeric"
                     class="set-input"
-                    placeholder="Reps"
+                    placeholder="reps"
                     value="${set.reps}"
                     data-action="update-set"
                     data-exercise="${exIdx}"
@@ -530,9 +604,7 @@ class App {
                     data-action="toggle-set"
                     data-exercise="${exIdx}"
                     data-set="${setIdx}"
-                  >
-                    ${set.done ? '✓' : ''}
-                  </button>
+                  >${set.done ? '✓' : ''}</button>
                 </div>
               `).join('')}
             </div>
@@ -540,8 +612,6 @@ class App {
         `).join('')}
       </div>
     `;
-
-    return html;
   }
 
   renderCalendarView() {
@@ -551,49 +621,46 @@ class App {
       const key = `bj_day_${day}_${this.state.intensity}`;
       const log = localStorage.getItem(key);
       const isCompleted = log ? JSON.parse(log).completed : false;
-      let cssClass = '';
 
-      if (day === this.state.currentDay) {
-        cssClass = 'today';
-      } else if (day === this.state.viewDay) {
-        cssClass = 'active';
-      } else if (isCompleted) {
-        cssClass = 'completed';
-      } else if (dayInfo.isRest) {
-        cssClass = 'rest';
-      }
+      let cssClass = '';
+      if (day === this.state.currentDay) cssClass = 'today';
+      else if (day === this.state.viewDay) cssClass = 'active';
+      else if (isCompleted) cssClass = 'completed';
+      else if (dayInfo.isRest) cssClass = 'rest';
+
+      const date = this.getDateForDay(day);
+      const dateLabel = date ? this.formatDateShort(date) : '';
 
       dayButtons.push(`
-        <button
-          class="day-button ${cssClass}"
-          data-action="set-view-day"
-          data-day="${day}"
-        >
-          ${day}
+        <button class="day-button ${cssClass}" data-action="set-view-day" data-day="${day}">
+          <span class="day-btn-num">${day}</span>
+          ${dateLabel ? `<span class="day-btn-date">${dateLabel}</span>` : ''}
         </button>
       `);
     }
 
     return `
       <div class="calendar-view">
-        <div class="calendar-grid">
-          ${dayButtons.join('')}
+        <div class="calendar-scroll">
+          <div class="calendar-grid">
+            ${dayButtons.join('')}
+          </div>
         </div>
         <div class="calendar-legend">
           <div class="legend-item">
-            <div class="legend-box" style="background-color: var(--green-dim); border: 1px solid var(--green);"></div>
+            <div class="legend-box" style="background-color:var(--green-dim);border:1px solid var(--green)"></div>
             <span>Today</span>
           </div>
           <div class="legend-item">
-            <div class="legend-box" style="background-color: var(--orange-dim); border: 1px solid var(--orange);"></div>
+            <div class="legend-box" style="background-color:var(--orange-dim);border:1px solid var(--orange)"></div>
             <span>Viewing</span>
           </div>
           <div class="legend-item">
-            <div class="legend-box" style="background-color: var(--green-dim); opacity: 0.7; border: 1px solid var(--green);"></div>
+            <div class="legend-box" style="background-color:var(--green-dim);opacity:.7;border:1px solid var(--green)"></div>
             <span>Completed</span>
           </div>
           <div class="legend-item">
-            <div class="legend-box" style="background-color: var(--bg); border: 1px solid var(--border);"></div>
+            <div class="legend-box" style="background-color:var(--bg);border:1px solid var(--border)"></div>
             <span>Rest Day</span>
           </div>
         </div>
@@ -603,7 +670,6 @@ class App {
 
   render() {
     const app = document.getElementById('app');
-    const dayInfo = getDayInfo(this.state.currentDay);
 
     if (this.state.showOnboarding) {
       app.innerHTML = this.renderOnboarding();
@@ -623,7 +689,7 @@ class App {
       return;
     }
 
-    const content = `
+    app.innerHTML = `
       <div class="top-bar">
         <div class="tab-switcher">
           <button class="tab-btn ${this.state.view === 'today' ? 'active' : ''}" data-action="set-view" data-view="today">Today</button>
@@ -637,40 +703,37 @@ class App {
           <button class="btn-settings" data-action="open-settings" title="Profile & Settings">⚙</button>
         </div>
       </div>
-
-      ${this.state.view === 'today' ? this.renderTodayView() : this.renderCalendarView()}
+      <div class="view-container">
+        ${this.state.view === 'today' ? this.renderTodayView() : this.renderCalendarView()}
+      </div>
     `;
 
-    app.innerHTML = content;
     this.attachEventListeners();
   }
 
   attachOnboardingListener() {
     const form = document.getElementById('onboarding-form');
     if (!form) return;
-
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const formData = new FormData(form);
-      const fitness = formData.get('fitness');
-      const equipment = formData.getAll('equipment');
-      const goal = formData.get('goal');
-
-      this.completeOnboarding(fitness, equipment, goal);
+      this.completeOnboarding(
+        formData.get('fitness'),
+        formData.getAll('equipment'),
+        formData.get('goal')
+      );
     });
   }
 
   attachSettingsListeners() {
     const app = document.getElementById('app');
-    const overlay = app.querySelector('.modal-overlay');
-
     app.addEventListener('click', (e) => {
-      const action = e.target.dataset.action;
-      
+      const action = e.target.closest('[data-action]')?.dataset.action;
       if (action === 'close-settings') {
         this.closeSettings();
       } else if (action === 'edit-profile') {
         this.state.showEditProfile = true;
+        this.state.showSettings = false;
         this.render();
       } else if (action === 'reset-progress') {
         this.resetProgress();
@@ -681,22 +744,21 @@ class App {
   attachEditProfileListener() {
     const form = document.getElementById('edit-profile-form');
     if (!form) return;
-
     form.addEventListener('submit', (e) => {
       e.preventDefault();
       const formData = new FormData(form);
-      const fitness = formData.get('fitness');
-      const equipment = formData.getAll('equipment');
-      const goal = formData.get('goal');
-
       this.state.showEditProfile = false;
-      this.updateProfile(fitness, equipment, goal);
+      this.updateProfile(
+        formData.get('fitness'),
+        formData.getAll('equipment'),
+        formData.get('goal')
+      );
       this.render();
     });
 
     const app = document.getElementById('app');
     app.addEventListener('click', (e) => {
-      const action = e.target.dataset.action;
+      const action = e.target.closest('[data-action]')?.dataset.action;
       if (action === 'close-settings') {
         this.state.showEditProfile = false;
         this.render();
@@ -708,14 +770,16 @@ class App {
     const app = document.getElementById('app');
 
     app.addEventListener('click', (e) => {
-      const action = e.target.dataset.action;
+      const target = e.target.closest('[data-action]');
+      if (!target) return;
+      const action = target.dataset.action;
 
       if (action === 'set-view') {
-        this.setView(e.target.dataset.view);
+        this.setView(target.dataset.view);
       } else if (action === 'set-intensity') {
-        this.setIntensity(e.target.dataset.intensity);
+        this.setIntensity(target.dataset.intensity);
       } else if (action === 'set-view-day') {
-        this.setViewDay(parseInt(e.target.dataset.day));
+        this.setViewDay(parseInt(target.dataset.day));
       } else if (action === 'jump-today') {
         this.jumpToToday();
       } else if (action === 'save-progress') {
@@ -723,22 +787,28 @@ class App {
       } else if (action === 'complete-day') {
         this.completeDay();
       } else if (action === 'toggle-set') {
-        const exerciseIdx = parseInt(e.target.dataset.exercise);
-        const setIdx = parseInt(e.target.dataset.set);
-        this.updateSet(exerciseIdx, setIdx, 'done', null);
+        this.updateSet(parseInt(target.dataset.exercise), parseInt(target.dataset.set), 'done', null);
         this.render();
       } else if (action === 'open-settings') {
         this.openSettings();
+      } else if (action === 'toggle-section') {
+        const content = document.getElementById(`${target.dataset.section}-content`);
+        const toggle = target.querySelector('.phase-toggle');
+        if (content) {
+          content.classList.toggle('collapsed');
+          if (toggle) toggle.style.transform = content.classList.contains('collapsed') ? 'rotate(-90deg)' : '';
+        }
       }
     });
 
     app.addEventListener('input', (e) => {
-      const action = e.target.dataset.action;
-      if (action === 'update-set') {
-        const exerciseIdx = parseInt(e.target.dataset.exercise);
-        const setIdx = parseInt(e.target.dataset.set);
-        const field = e.target.dataset.field;
-        this.updateSet(exerciseIdx, setIdx, field, e.target.value);
+      if (e.target.dataset.action === 'update-set') {
+        this.updateSet(
+          parseInt(e.target.dataset.exercise),
+          parseInt(e.target.dataset.set),
+          e.target.dataset.field,
+          e.target.value
+        );
       }
     });
   }
@@ -748,12 +818,5 @@ class App {
   }
 }
 
-// Initialize app when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  window.app = new App();
-});
-
-// Fallback if DOM is already ready
-if (document.readyState !== 'loading') {
-  window.app = new App();
-}
+document.addEventListener('DOMContentLoaded', () => { window.app = new App(); });
+if (document.readyState !== 'loading') { window.app = new App(); }

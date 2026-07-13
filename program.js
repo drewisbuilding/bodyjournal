@@ -192,6 +192,75 @@ const EXERCISES = {
   ]
 };
 
+const WARMUP = {
+  push: [
+    { name: 'Arm Circles', duration: '30s each direction', notes: 'Forward then backward, full range' },
+    { name: 'Band Pull-Aparts', duration: '15 reps', notes: 'Opens chest, activates rear delts' },
+    { name: 'Shoulder CARs', duration: '5 each side', notes: 'Slow controlled shoulder rotation' },
+    { name: 'Push-up to Downward Dog', duration: '8 reps', notes: 'Slow and controlled, full hip extension' }
+  ],
+  pull: [
+    { name: 'Arm Circles', duration: '30s each direction', notes: 'Forward then backward' },
+    { name: 'Cat-Cow', duration: '10 reps', notes: 'Mobilize thoracic spine, breathe through it' },
+    { name: 'Dead Hangs', duration: '30s', notes: 'Decompress spine, feel lats engage' },
+    { name: 'Scapular Pull-ups', duration: '10 reps', notes: 'No elbow bend — just depress and elevate scapula' }
+  ],
+  legs: [
+    { name: 'Hip Circles', duration: '10 each direction', notes: 'Standing, hands on hips, big circles' },
+    { name: 'Leg Swings', duration: '10 each leg', notes: 'Front/back then lateral, hold something for balance' },
+    { name: 'Bodyweight Squats', duration: '15 reps', notes: 'Full depth, 3-second descent, pause at bottom' },
+    { name: 'Walking Lunges', duration: '10 each leg', notes: 'No weight, full stride, upright torso' },
+    { name: 'Glute Bridges', duration: '15 reps', notes: 'Squeeze at top, activate glutes before loading' }
+  ],
+  core: [
+    { name: 'Cat-Cow', duration: '10 reps', notes: 'Mobilize the lumbar spine, exhale to flex' },
+    { name: 'Dead Bug', duration: '8 each side', notes: 'Slow, press lower back into floor' },
+    { name: 'Hip Flexor Stretch', duration: '30s each side', notes: 'Kneeling lunge, upright torso, squeeze glute' },
+    { name: 'Thoracic Rotations', duration: '10 each side', notes: 'Seated or quadruped, rotate through upper back' }
+  ],
+  cardio: [
+    { name: 'Slow Walk / March', duration: '3 min', notes: 'Raise heart rate gradually, swing arms' },
+    { name: 'Leg Swings', duration: '10 each leg', notes: 'Front/back and lateral' },
+    { name: 'High Knees', duration: '30s', notes: 'Light pace, progressive' },
+    { name: 'Butt Kicks', duration: '30s', notes: 'Easy, focus on full hip extension' }
+  ]
+};
+
+const COOLDOWN = {
+  push: [
+    { name: 'Chest Doorway Stretch', duration: '45s each side', notes: 'Arm at 90°, lean forward slowly' },
+    { name: 'Cross-Body Shoulder Stretch', duration: '30s each side', notes: 'Pull arm across chest, hold' },
+    { name: 'Overhead Triceps Stretch', duration: '30s each side', notes: 'Elbow bent behind head, gently push down' },
+    { name: "Child's Pose", duration: '60s', notes: 'Arms extended forward, breathe deep into back' }
+  ],
+  pull: [
+    { name: 'Lat Overhead Stretch', duration: '45s each side', notes: 'Grab fixed object, lean and press hips away' },
+    { name: 'Biceps Wall Stretch', duration: '30s each side', notes: 'Palm flat on wall, rotate body away slowly' },
+    { name: 'Thread the Needle', duration: '30s each side', notes: 'Quadruped, slide arm under body, rotate upper back' },
+    { name: "Child's Pose", duration: '60s', notes: 'Arms wide, breathe into the stretch' }
+  ],
+  legs: [
+    { name: 'Standing Quad Stretch', duration: '45s each side', notes: 'Pull heel to glute, stand tall, squeeze glute' },
+    { name: 'Seated Hamstring Stretch', duration: '45s each side', notes: 'Reach toward toes, flat back, breathe out' },
+    { name: 'Figure-4 Glute Stretch', duration: '45s each side', notes: 'Lying on back or seated, foot over knee' },
+    { name: 'Hip Flexor Lunge Stretch', duration: '45s each side', notes: 'Low lunge, push hips forward, stay upright' },
+    { name: 'Calf Stretch', duration: '30s each side', notes: 'Wall push, heel pressed flat to floor' }
+  ],
+  core: [
+    { name: 'Cobra Stretch', duration: '45s', notes: 'Press up, hips on floor, look forward, breathe' },
+    { name: 'Seated Spinal Twist', duration: '45s each side', notes: 'Foot over knee, rotate tall, breathe out' },
+    { name: 'Hip Flexor Lunge Stretch', duration: '45s each side', notes: 'Kneeling, hips forward, arms overhead' },
+    { name: "Child's Pose", duration: '60s', notes: 'Full body release, deep slow breaths' }
+  ],
+  cardio: [
+    { name: 'Slow Walk', duration: '3 min', notes: 'Bring heart rate down gradually' },
+    { name: 'Standing Quad Stretch', duration: '45s each side', notes: 'Hold and breathe steadily' },
+    { name: 'Hip Flexor Lunge Stretch', duration: '45s each side', notes: 'Low lunge, hips pressing forward' },
+    { name: 'Seated Hamstring Stretch', duration: '45s each side', notes: 'Long exhale into the stretch' },
+    { name: 'Chest Opener', duration: '60s', notes: 'Arms wide, chin up, slow deep breaths' }
+  ]
+};
+
 function getDayInfo(day) {
   if (day < 1 || day > 90) {
     return null;
