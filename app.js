@@ -2,6 +2,10 @@
 
 class App {
   constructor() {
+    this.authUser = null;
+    this.authState = 'loading'; // 'loading' | 'enter_email' | 'check_email' | 'app'
+    this.authEmail = '';
+
     this.state = {
       currentDay: 1,
       startDate: null,
@@ -26,13 +30,6 @@ class App {
       }
     };
 
-    this.loadProfile();
-    if (!this.state.profile) {
-      this.state.showOnboarding = true;
-    } else {
-      this.loadMeta();
-      this.loadLog();
-    }
     this.init();
   }
 
@@ -46,6 +43,9 @@ class App {
   saveProfile(profile) {
     this.state.profile = profile;
     localStorage.setItem('bj_profile', JSON.stringify(profile));
+    if (this.authUser && isSupabaseConfigured()) {
+      dbSaveProfile(this.authUser.id, profile, this.state.startDate).catch(console.error);
+    }
   }
 
   calcCurrentDay(startDate) {
@@ -108,6 +108,9 @@ class App {
       startDate: this.state.startDate,
       intensity: this.state.intensity
     }));
+    if (this.authUser && this.state.profile && isSupabaseConfigured()) {
+      dbSaveProfile(this.authUser.id, this.state.profile, this.state.startDate).catch(console.error);
+    }
   }
 
   loadLog() {
@@ -140,6 +143,9 @@ class App {
     if (!this.state.log) return;
     const key = `bj_day_${this.state.viewDay}_${this.state.intensity}`;
     localStorage.setItem(key, JSON.stringify(this.state.log));
+    if (this.authUser && isSupabaseConfigured()) {
+      dbSaveLog(this.authUser.id, this.state.viewDay, this.state.intensity, this.state.log).catch(console.error);
+    }
   }
 
   setView(view) {
@@ -664,6 +670,12 @@ class App {
               <button class="btn secondary" data-action="edit-profile">Edit Profile</button>
               <button class="btn danger" data-action="reset-progress">Reset Progress</button>
             </div>
+
+            ${this.authUser ? `
+            <div class="setting-section" style="margin-top:8px;border-top:1px solid var(--border);padding-top:16px;">
+              <div style="font-size:12px;color:var(--ink-faint);margin-bottom:8px;">Signed in as ${this.authUser.email}</div>
+              <button class="btn secondary" data-action="sign-out">Sign Out</button>
+            </div>` : ''}
           </div>
         </div>
       </div>
@@ -872,6 +884,22 @@ class App {
   render() {
     const app = document.getElementById('app');
 
+    // Auth gates — shown before anything else
+    if (this.authState === 'loading') {
+      app.innerHTML = this.renderAuthLoading();
+      return;
+    }
+    if (this.authState === 'enter_email') {
+      app.innerHTML = this.renderAuthEmail();
+      this.attachAuthListeners();
+      return;
+    }
+    if (this.authState === 'check_email') {
+      app.innerHTML = this.renderAuthCheckEmail();
+      this.attachAuthListeners();
+      return;
+    }
+
     if (this.state.showOnboarding) {
       app.innerHTML = this.renderOnboarding();
       this.attachOnboardingListener();
@@ -1044,6 +1072,8 @@ class App {
         this.render();
       } else if (action === 'reset-progress') {
         this.resetProgress();
+      } else if (action === 'sign-out') {
+        this.signOut();
       }
     });
   }
@@ -1125,8 +1155,179 @@ class App {
     });
   }
 
-  init() {
+  // ── Auth ────────────────────────────────────────────────
+
+  async init() {
+    if (!isSupabaseConfigured()) {
+      // No Supabase — fall back to pure localStorage mode
+      this.authState = 'app';
+      this.initLocal();
+      this.render();
+      return;
+    }
+
+    // Render loading spinner immediately
     this.render();
+
+    // Handle magic link redirect + session changes
+    dbOnAuthChange((session) => {
+      if (session && this.authState !== 'app') {
+        this.authUser = session.user;
+        this.onSignedIn();
+      } else if (!session && this.authState === 'app') {
+        this.authUser = null;
+        this.authState = 'enter_email';
+        this.render();
+      }
+    });
+
+    const session = await dbGetSession();
+    if (session) {
+      this.authUser = session.user;
+      await this.onSignedIn();
+    } else {
+      this.authState = 'enter_email';
+      this.render();
+    }
+  }
+
+  async onSignedIn() {
+    // Pull profile from Supabase (source of truth on sign-in)
+    const remote = await dbGetProfile(this.authUser.id);
+    if (remote) {
+      const { startDate, ...profile } = remote;
+      this.saveProfileLocal(profile);
+      if (startDate) {
+        this.state.startDate = startDate;
+        this.state.currentDay = this.calcCurrentDay(startDate);
+        this.state.viewDay = this.state.currentDay;
+        localStorage.setItem('bj_meta', JSON.stringify({ startDate, intensity: this.state.intensity }));
+      }
+      // Pull all logs from Supabase into localStorage
+      const logs = await dbGetAllLogs(this.authUser.id);
+      for (const row of logs) {
+        localStorage.setItem(`bj_day_${row.day_num}_${row.intensity}`, JSON.stringify(row.log));
+      }
+    }
+
+    this.authState = 'app';
+    this.initLocal();
+    this.render();
+  }
+
+  saveProfileLocal(profile) {
+    this.state.profile = profile;
+    localStorage.setItem('bj_profile', JSON.stringify(profile));
+  }
+
+  initLocal() {
+    this.loadProfile();
+    if (!this.state.profile) {
+      this.state.showOnboarding = true;
+    } else {
+      this.loadMeta();
+      this.loadLog();
+    }
+  }
+
+  async sendMagicLink() {
+    const emailEl = document.getElementById('auth-email');
+    const email = emailEl?.value?.trim();
+    if (!email || !email.includes('@')) {
+      emailEl?.classList.add('input-error');
+      return;
+    }
+    this.authEmail = email;
+    const error = await dbSignInWithEmail(email);
+    if (error) {
+      this.showStatus('Error: ' + error.message);
+      return;
+    }
+    this.authState = 'check_email';
+    this.render();
+  }
+
+  async signOut() {
+    if (isSupabaseConfigured()) await dbSignOut();
+    localStorage.clear();
+    location.reload();
+  }
+
+  // ── Auth render ──────────────────────────────────────────
+
+  renderAuthLoading() {
+    return `
+      <div class="auth-screen">
+        <div class="auth-loading-mark">BJ</div>
+        <div class="auth-loading-dots">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    `;
+  }
+
+  renderAuthEmail() {
+    return `
+      <div class="ob-screen ob-welcome">
+        <div class="ob-welcome-body">
+          <div class="ob-welcome-mark">BJ</div>
+          <div class="ob-welcome-title">Body Journal</div>
+          <div class="ob-welcome-sub">Sign in to keep your program safe and synced across all your devices.</div>
+          <div class="ob-intro-fields">
+            <div class="ob-intro-field ob-intro-full">
+              <label class="ob-field-label">Email Address</label>
+              <input
+                type="email"
+                id="auth-email"
+                class="ob-field-input"
+                placeholder="you@example.com"
+                inputmode="email"
+                autocomplete="email"
+                value="${this.authEmail}"
+              >
+            </div>
+          </div>
+        </div>
+        <div class="ob-footer">
+          <button class="ob-btn-continue" data-action="auth-send">Send Sign-In Link →</button>
+        </div>
+      </div>
+    `;
+  }
+
+  renderAuthCheckEmail() {
+    return `
+      <div class="ob-screen ob-welcome">
+        <div class="ob-welcome-body">
+          <div class="auth-check-icon">✉</div>
+          <div class="ob-welcome-title">Check Your Email</div>
+          <div class="ob-welcome-sub">We sent a sign-in link to <strong>${this.authEmail}</strong>.<br>Click it to open the app — no password needed.</div>
+          <div class="auth-check-note">Link expires in 1 hour. Check your spam folder if you don't see it.</div>
+        </div>
+        <div class="ob-footer">
+          <button class="ob-btn-back" data-action="auth-back">Use a different email</button>
+        </div>
+      </div>
+    `;
+  }
+
+  attachAuthListeners() {
+    const app = document.getElementById('app');
+    app.addEventListener('click', (e) => {
+      const action = e.target.closest('[data-action]')?.dataset.action;
+      if (action === 'auth-send') {
+        this.sendMagicLink();
+      } else if (action === 'auth-back') {
+        this.authState = 'enter_email';
+        this.render();
+      }
+    });
+    app.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const emailEl = document.getElementById('auth-email');
+        if (emailEl) this.sendMagicLink();
+      }
+    });
   }
 }
 
