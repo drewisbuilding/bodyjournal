@@ -212,6 +212,9 @@ class App {
   updateProfile(fitnessLevel, equipment, goal) {
     const profile = { ...this.state.profile, fitnessLevel, equipment, goal };
     this.saveProfile(profile);
+    // Clear cached exercises so the new equipment selection takes effect immediately
+    localStorage.removeItem(`bj_day_${this.state.viewDay}_light`);
+    localStorage.removeItem(`bj_day_${this.state.viewDay}_heavy`);
     this.loadLog();
     this.closeSettings();
   }
@@ -789,6 +792,9 @@ class App {
   renderExercises() {
     if (!this.state.log || !this.state.log.exercises) return '';
 
+    const dayInfo = getDayInfo(this.state.viewDay);
+    const isRecovery = dayInfo && dayInfo.workoutType === 'recovery';
+
     return `
       <div class="exercises-list">
         ${this.state.log.exercises.map((exercise, exIdx) => `
@@ -802,30 +808,34 @@ class App {
             </div>
             <div class="sets-grid">
               ${exercise.sets.map((set, setIdx) => `
-                <div class="set-row">
+                <div class="set-row${isRecovery ? ' set-row-recovery' : ''}">
                   <div class="set-number">S${setIdx + 1}</div>
-                  <input
-                    type="text"
-                    inputmode="decimal"
-                    class="set-input"
-                    placeholder="lbs"
-                    value="${set.weight}"
-                    data-action="update-set"
-                    data-exercise="${exIdx}"
-                    data-set="${setIdx}"
-                    data-field="weight"
-                  >
-                  <input
-                    type="text"
-                    inputmode="numeric"
-                    class="set-input"
-                    placeholder="reps"
-                    value="${set.reps}"
-                    data-action="update-set"
-                    data-exercise="${exIdx}"
-                    data-set="${setIdx}"
-                    data-field="reps"
-                  >
+                  ${isRecovery ? `
+                    <div class="set-recovery-reps">${set.reps}</div>
+                  ` : `
+                    <input
+                      type="text"
+                      inputmode="decimal"
+                      class="set-input"
+                      placeholder="lbs"
+                      value="${set.weight}"
+                      data-action="update-set"
+                      data-exercise="${exIdx}"
+                      data-set="${setIdx}"
+                      data-field="weight"
+                    >
+                    <input
+                      type="text"
+                      inputmode="numeric"
+                      class="set-input"
+                      placeholder="reps"
+                      value="${set.reps}"
+                      data-action="update-set"
+                      data-exercise="${exIdx}"
+                      data-set="${setIdx}"
+                      data-field="reps"
+                    >
+                  `}
                   <button
                     class="set-checkbox ${set.done ? 'done' : ''}"
                     data-action="toggle-set"
@@ -875,7 +885,7 @@ class App {
         </div>
         <div class="calendar-legend">
           <div class="legend-item">
-            <div class="legend-box" style="background-color:var(--green-dim);border:1px solid var(--green)"></div>
+            <div class="legend-box" style="background-color:var(--yellow-dim);border:1px solid var(--yellow)"></div>
             <span>Today</span>
           </div>
           <div class="legend-item">
@@ -883,7 +893,7 @@ class App {
             <span>Viewing</span>
           </div>
           <div class="legend-item">
-            <div class="legend-box" style="background-color:var(--green-dim);opacity:.7;border:1px solid var(--green)"></div>
+            <div class="legend-box" style="background-color:var(--green-dim);border:1px solid var(--green)"></div>
             <span>Completed</span>
           </div>
           <div class="legend-item">

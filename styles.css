@@ -9,6 +9,8 @@
   --orange-dim: #4A2218;
   --green: #3A7D5C;
   --green-dim: #1C3328;
+  --yellow: #D4A017;
+  --yellow-dim: #3D2E07;
   --border: #3A3A38;
   --border-light: #4A4A47;
 }
@@ -609,8 +611,8 @@ body {
 }
 
 .set-checkbox {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   background-color: var(--bg-input);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -618,8 +620,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  transition: all 0.2s;
+  font-size: 18px;
+  transition: all 0.15s;
+  flex-shrink: 0;
 }
 
 .set-checkbox:hover {
@@ -627,9 +630,22 @@ body {
 }
 
 .set-checkbox.done {
-  background-color: var(--green-dim);
+  background-color: var(--green);
   border-color: var(--green);
-  color: var(--green);
+  color: #0D1F17;
+  font-weight: 700;
+}
+
+/* Recovery-day set rows: no weight/reps inputs, just label + checkbox */
+.set-row-recovery {
+  grid-template-columns: 32px 1fr 44px;
+}
+
+.set-recovery-reps {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ink-dim);
+  padding: 0 4px;
 }
 
 /* Rest day */
@@ -706,7 +722,8 @@ body {
 }
 
 .today .day-btn-date,
-.active .day-btn-date {
+.active .day-btn-date,
+.completed .day-btn-date {
   color: inherit;
   opacity: 0.7;
 }
@@ -721,9 +738,9 @@ body {
 }
 
 .day-button.today {
-  background-color: var(--green-dim);
-  border-color: var(--green);
-  color: var(--green);
+  background-color: var(--yellow-dim);
+  border-color: var(--yellow);
+  color: var(--yellow);
   font-weight: 600;
 }
 
