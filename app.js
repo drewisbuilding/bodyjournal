@@ -12,7 +12,14 @@ class App {
       profile: null,
       showOnboarding: false,
       showSettings: false,
-      showEditProfile: false
+      showEditProfile: false,
+      obStep: 1,
+      obData: {
+        fitnessLevel: 'beginner',
+        equipment: [],
+        goal: 'build',
+        startDate: new Date().toISOString().split('T')[0]
+      }
     };
 
     this.loadProfile();
@@ -47,15 +54,13 @@ class App {
     return Math.max(1, Math.min(90, diff + 1));
   }
 
-  completeOnboarding(fitnessLevel, equipment, goal) {
+  completeOnboarding(fitnessLevel, equipment, goal, startDate) {
     const profile = { fitnessLevel, equipment, goal };
     this.saveProfile(profile);
     this.state.showOnboarding = false;
-    if (!this.state.startDate) {
-      this.state.startDate = new Date().toISOString().split('T')[0];
-      this.state.currentDay = 1;
-      this.state.viewDay = 1;
-    }
+    this.state.startDate = startDate || new Date().toISOString().split('T')[0];
+    this.state.currentDay = this.calcCurrentDay(this.state.startDate);
+    this.state.viewDay = this.state.currentDay;
     this.saveMeta();
     this.loadLog();
     this.render();
@@ -329,86 +334,150 @@ class App {
   }
 
   renderOnboarding() {
+    const step = this.state.obStep;
+    if (step === 1) return this.renderObWelcome();
+
+    const stepIndex = step - 2;
+    const titles = ['Fitness Level', 'Equipment', 'Goal', 'Start Date'];
+
     return `
-      <div class="modal-overlay">
-        <div class="modal onboarding-modal">
-          <div class="modal-header">
-            <h2>Welcome to Body Journal</h2>
-            <p>Let's personalize your program</p>
+      <div class="ob-screen">
+        <div class="ob-header">
+          <button class="ob-back" data-action="ob-back">←</button>
+          <div class="ob-progress">
+            ${[0,1,2,3].map(i => `<div class="ob-dot ${i <= stepIndex ? 'active' : ''}"></div>`).join('')}
           </div>
+          <div style="width:40px"></div>
+        </div>
+        <div class="ob-body">
+          ${step === 2 ? this.renderObFitness() : ''}
+          ${step === 3 ? this.renderObEquipment() : ''}
+          ${step === 4 ? this.renderObGoal() : ''}
+          ${step === 5 ? this.renderObStartDate() : ''}
+        </div>
+        <div class="ob-footer">
+          <button class="ob-btn-continue" data-action="ob-next">
+            ${step === 5 ? 'Start Program' : 'Continue →'}
+          </button>
+        </div>
+      </div>
+    `;
+  }
 
-          <form id="onboarding-form" class="onboarding-form">
-            <div class="form-group">
-              <label>Fitness Level</label>
-              <div class="radio-group">
-                <label class="radio-label">
-                  <input type="radio" name="fitness" value="beginner" checked>
-                  <span>Beginner</span>
-                  <div class="radio-desc">New to training or returning after a break</div>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="fitness" value="intermediate">
-                  <span>Intermediate</span>
-                  <div class="radio-desc">Training consistently 1-2 years</div>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="fitness" value="advanced">
-                  <span>Advanced</span>
-                  <div class="radio-desc">2+ years of consistent training</div>
-                </label>
-              </div>
-            </div>
+  renderObWelcome() {
+    return `
+      <div class="ob-screen ob-welcome">
+        <div class="ob-welcome-body">
+          <div class="ob-welcome-mark">BJ</div>
+          <div class="ob-welcome-title">Body Journal</div>
+          <div class="ob-welcome-sub">Your personal 90-day program — built around your body, your equipment, your schedule. Show up daily and the program handles the rest.</div>
+          <div class="ob-welcome-pills">
+            <span class="ob-pill">90 Days</span>
+            <span class="ob-pill">3 Phases</span>
+            <span class="ob-pill">Personalized</span>
+          </div>
+        </div>
+        <div class="ob-footer">
+          <button class="ob-btn-continue" data-action="ob-start">Build My Program →</button>
+        </div>
+      </div>
+    `;
+  }
 
-            <div class="form-group">
-              <label>Available Equipment</label>
-              <div class="checkbox-group">
-                <label class="checkbox-label">
-                  <input type="checkbox" name="equipment" value="barbell">
-                  <span>Barbell</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" name="equipment" value="dumbbells">
-                  <span>Dumbbells</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" name="equipment" value="pull_up_bar">
-                  <span>Pull-up Bar</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" name="equipment" value="cable_machine">
-                  <span>Cable / Machines</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" name="equipment" value="bench">
-                  <span>Weight Bench</span>
-                </label>
-              </div>
-              <p class="form-hint">Select all that apply. Leave empty for bodyweight-only exercises.</p>
-            </div>
+  renderObFitness() {
+    const current = this.state.obData.fitnessLevel;
+    return `
+      <div class="ob-question">What's your fitness level?</div>
+      <div class="ob-hint">We'll scale sets, reps, and rest to match where you are right now.</div>
+      <div class="ob-options">
+        ${[
+          { v: 'beginner',     label: 'Beginner',     desc: 'New to training, or returning after a long break' },
+          { v: 'intermediate', label: 'Intermediate',  desc: 'Training consistently for 1–2 years' },
+          { v: 'advanced',     label: 'Advanced',      desc: '2+ years of serious, consistent training' }
+        ].map(o => `
+          <button class="ob-option ${current === o.v ? 'selected' : ''}" data-group="fitness" data-value="${o.v}">
+            <div class="ob-option-label">${o.label}</div>
+            <div class="ob-option-desc">${o.desc}</div>
+          </button>
+        `).join('')}
+      </div>
+    `;
+  }
 
-            <div class="form-group">
-              <label>Goal</label>
-              <div class="radio-group">
-                <label class="radio-label">
-                  <input type="radio" name="goal" value="build" checked>
-                  <span>Build Muscle</span>
-                  <div class="radio-desc">Progressive strength & hypertrophy</div>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="goal" value="cut">
-                  <span>Get Fit / Cut</span>
-                  <div class="radio-desc">Maintain strength while leaning out</div>
-                </label>
-                <label class="radio-label">
-                  <input type="radio" name="goal" value="endurance">
-                  <span>Build Endurance</span>
-                  <div class="radio-desc">Aerobic capacity & conditioning</div>
-                </label>
-              </div>
-            </div>
+  renderObEquipment() {
+    const current = this.state.obData.equipment;
+    const opts = [
+      { v: 'barbell',       label: 'Barbell' },
+      { v: 'dumbbells',     label: 'Dumbbells' },
+      { v: 'pull_up_bar',   label: 'Pull-up Bar' },
+      { v: 'cable_machine', label: 'Cables / Machines' },
+      { v: 'bench',         label: 'Weight Bench' }
+    ];
+    return `
+      <div class="ob-question">What equipment do you have?</div>
+      <div class="ob-hint">Select everything available. We'll pick the best exercises for your setup. Leave all unchecked for bodyweight only.</div>
+      <div class="ob-eq-grid">
+        ${opts.map(o => `
+          <button class="ob-eq-btn ${current.includes(o.v) ? 'selected' : ''}" data-group="equipment" data-value="${o.v}">
+            <div class="ob-eq-check">${current.includes(o.v) ? '✓' : ''}</div>
+            <div class="ob-eq-label">${o.label}</div>
+          </button>
+        `).join('')}
+      </div>
+    `;
+  }
 
-            <button type="submit" class="btn primary" style="width: 100%; margin-top: 16px;">Start Program</button>
-          </form>
+  renderObGoal() {
+    const current = this.state.obData.goal;
+    return `
+      <div class="ob-question">What's your primary goal?</div>
+      <div class="ob-hint">This shapes your volume, intensity, and how we progress the program.</div>
+      <div class="ob-options">
+        ${[
+          { v: 'build',     label: 'Build Muscle',    desc: 'Progressive overload, strength and hypertrophy' },
+          { v: 'cut',       label: 'Get Lean',         desc: 'Burn fat while holding onto muscle' },
+          { v: 'endurance', label: 'Build Endurance',  desc: 'Aerobic capacity and work conditioning' }
+        ].map(o => `
+          <button class="ob-option ${current === o.v ? 'selected' : ''}" data-group="goal" data-value="${o.v}">
+            <div class="ob-option-label">${o.label}</div>
+            <div class="ob-option-desc">${o.desc}</div>
+          </button>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  renderObStartDate() {
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const todayFmt = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    const yestFmt = new Date(Date.now() - 86400000).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    const current = this.state.obData.startDate;
+    const isToday = current === today;
+    const isYest = current === yesterday;
+    const isCustom = !isToday && !isYest;
+
+    return `
+      <div class="ob-question">When was Day 1?</div>
+      <div class="ob-hint">We'll align your program with the real calendar so every day shows the right workout.</div>
+      <div class="ob-date-opts">
+        <button class="ob-date-btn ${isToday ? 'selected' : ''}" data-date-preset="${today}">
+          <div class="ob-date-btn-label">Today</div>
+          <div class="ob-date-btn-sub">${todayFmt}</div>
+        </button>
+        <button class="ob-date-btn ${isYest ? 'selected' : ''}" data-date-preset="${yesterday}">
+          <div class="ob-date-btn-label">Yesterday</div>
+          <div class="ob-date-btn-sub">${yestFmt}</div>
+        </button>
+        <div class="ob-date-custom-wrap">
+          <div class="ob-date-custom-label">Or pick a date</div>
+          <input
+            type="date"
+            id="ob-custom-date"
+            class="ob-date-input ${isCustom ? 'selected' : ''}"
+            value="${current}"
+            max="${today}"
+          >
         </div>
       </div>
     `;
@@ -714,17 +783,93 @@ class App {
   }
 
   attachOnboardingListener() {
-    const form = document.getElementById('onboarding-form');
-    if (!form) return;
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const formData = new FormData(form);
-      this.completeOnboarding(
-        formData.get('fitness'),
-        formData.getAll('equipment'),
-        formData.get('goal')
-      );
+    const app = document.getElementById('app');
+
+    app.addEventListener('click', (e) => {
+      // Nav actions
+      const actionEl = e.target.closest('[data-action]');
+      if (actionEl) {
+        const action = actionEl.dataset.action;
+        if (action === 'ob-start') {
+          this.state.obStep = 2;
+          this.render();
+          return;
+        }
+        if (action === 'ob-back') {
+          if (this.state.obStep > 1) { this.state.obStep--; this.render(); }
+          return;
+        }
+        if (action === 'ob-next') {
+          this.obAdvance();
+          return;
+        }
+      }
+
+      // Single-select options (fitness, goal)
+      const optBtn = e.target.closest('.ob-option[data-group]');
+      if (optBtn) {
+        const group = optBtn.dataset.group;
+        const value = optBtn.dataset.value;
+        app.querySelectorAll(`.ob-option[data-group="${group}"]`).forEach(el => el.classList.remove('selected'));
+        optBtn.classList.add('selected');
+        if (group === 'fitness') this.state.obData.fitnessLevel = value;
+        if (group === 'goal') this.state.obData.goal = value;
+        return;
+      }
+
+      // Multi-select equipment
+      const eqBtn = e.target.closest('.ob-eq-btn[data-group="equipment"]');
+      if (eqBtn) {
+        const value = eqBtn.dataset.value;
+        eqBtn.classList.toggle('selected');
+        const icon = eqBtn.querySelector('.ob-eq-check');
+        if (eqBtn.classList.contains('selected')) {
+          if (icon) icon.textContent = '✓';
+          if (!this.state.obData.equipment.includes(value)) this.state.obData.equipment.push(value);
+        } else {
+          if (icon) icon.textContent = '';
+          this.state.obData.equipment = this.state.obData.equipment.filter(v => v !== value);
+        }
+        return;
+      }
+
+      // Date presets
+      const dateBtn = e.target.closest('[data-date-preset]');
+      if (dateBtn) {
+        app.querySelectorAll('[data-date-preset]').forEach(el => el.classList.remove('selected'));
+        const customInput = document.getElementById('ob-custom-date');
+        if (customInput) customInput.classList.remove('selected');
+        dateBtn.classList.add('selected');
+        const val = dateBtn.dataset.datePreset;
+        this.state.obData.startDate = val;
+        if (customInput) customInput.value = val;
+        return;
+      }
     });
+
+    // Custom date input
+    app.addEventListener('change', (e) => {
+      if (e.target.id === 'ob-custom-date') {
+        app.querySelectorAll('[data-date-preset]').forEach(el => el.classList.remove('selected'));
+        e.target.classList.add('selected');
+        this.state.obData.startDate = e.target.value;
+      }
+    });
+  }
+
+  obAdvance() {
+    if (this.state.obStep < 5) {
+      this.state.obStep++;
+      this.render();
+    } else {
+      const d = this.state.obData;
+      this.completeOnboarding(
+        d.fitnessLevel || 'beginner',
+        d.equipment || [],
+        d.goal || 'build',
+        d.startDate || new Date().toISOString().split('T')[0]
+      );
+    }
   }
 
   attachSettingsListeners() {

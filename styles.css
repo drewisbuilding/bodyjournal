@@ -575,6 +575,372 @@ body {
   }
 }
 
+/* ── Onboarding Wizard ─────────────────────────────── */
+.ob-screen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  background-color: var(--bg);
+}
+
+.ob-welcome {
+  justify-content: space-between;
+}
+
+.ob-welcome-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px 24px;
+  text-align: center;
+  gap: 16px;
+}
+
+.ob-welcome-mark {
+  width: 72px;
+  height: 72px;
+  background-color: var(--green-dim);
+  border: 2px solid var(--green);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Oswald', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--green);
+  letter-spacing: 0.05em;
+}
+
+.ob-welcome-title {
+  font-family: 'Oswald', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.ob-welcome-sub {
+  font-size: 15px;
+  color: var(--ink-dim);
+  line-height: 1.6;
+  max-width: 300px;
+}
+
+.ob-welcome-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.ob-pill {
+  padding: 4px 12px;
+  background-color: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.05em;
+}
+
+/* Wizard header */
+.ob-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  padding-top: calc(16px + env(safe-area-inset-top));
+}
+
+.ob-back {
+  width: 40px;
+  height: 40px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--ink-dim);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.ob-back:hover {
+  border-color: var(--border-light);
+  color: var(--ink);
+}
+
+.ob-progress {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ob-dot {
+  height: 6px;
+  width: 20px;
+  border-radius: 3px;
+  background-color: var(--border);
+  transition: all 0.3s;
+}
+
+.ob-dot.active {
+  background-color: var(--green);
+  width: 28px;
+}
+
+/* Wizard body */
+.ob-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 24px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ob-question {
+  font-family: 'Oswald', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.ob-hint {
+  font-size: 13px;
+  color: var(--ink-dim);
+  line-height: 1.5;
+  margin-top: -8px;
+}
+
+/* Single-select options */
+.ob-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ob-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 16px;
+  background-color: var(--bg-raised);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  text-align: left;
+  gap: 4px;
+}
+
+.ob-option:active {
+  transform: scale(0.98);
+}
+
+.ob-option.selected {
+  border-color: var(--green);
+  background-color: var(--green-dim);
+}
+
+.ob-option-label {
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink);
+}
+
+.ob-option-desc {
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 1.4;
+}
+
+.ob-option.selected .ob-option-label {
+  color: var(--green);
+}
+
+/* Equipment grid */
+.ob-eq-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.ob-eq-btn {
+  display: flex;
+  align-items: center;
+  padding: 14px 12px;
+  background-color: var(--bg-raised);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.ob-eq-btn:active {
+  transform: scale(0.97);
+}
+
+.ob-eq-btn.selected {
+  border-color: var(--green);
+  background-color: var(--green-dim);
+}
+
+.ob-eq-check {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-light);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  color: var(--bg);
+}
+
+.ob-eq-btn.selected .ob-eq-check {
+  background-color: var(--green);
+  border-color: var(--green);
+}
+
+.ob-eq-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* Start date step */
+.ob-date-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ob-date-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 16px;
+  background-color: var(--bg-raised);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+  text-align: left;
+  gap: 4px;
+}
+
+.ob-date-btn:active {
+  transform: scale(0.98);
+}
+
+.ob-date-btn.selected {
+  border-color: var(--green);
+  background-color: var(--green-dim);
+}
+
+.ob-date-btn-label {
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ob-date-btn.selected .ob-date-btn-label {
+  color: var(--green);
+}
+
+.ob-date-btn-sub {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.ob-date-custom-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ob-date-custom-label {
+  font-size: 12px;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.ob-date-input {
+  width: 100%;
+  padding: 14px 16px;
+  background-color: var(--bg-raised);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+
+.ob-date-input:focus,
+.ob-date-input.selected {
+  border-color: var(--green);
+  background-color: var(--green-dim);
+}
+
+/* Footer CTA */
+.ob-footer {
+  padding: 16px 20px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+
+.ob-btn-continue {
+  width: 100%;
+  padding: 16px;
+  background-color: var(--green);
+  border: none;
+  color: #0D1F17;
+  font-family: 'Oswald', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  min-height: 52px;
+}
+
+.ob-btn-continue:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* ── End Onboarding Wizard ─────────────────────────── */
+
 /* Modal overlays */
 .modal-overlay {
   position: fixed;

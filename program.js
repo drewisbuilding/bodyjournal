@@ -6,9 +6,12 @@ const PHASES = [
   { phase: 3, name: 'Peak', startDay: 61, endDay: 90, description: 'Push intensity, refine weak points' }
 ];
 
+// Phase 1: no true rest — build the daily habit with active recovery
+// Phase 2: one real rest day introduced
+// Phase 3: full rest schedule
 const ROTATIONS = {
-  1: ['push', 'rest', 'pull', 'legs', 'core', 'cardio', 'rest'],
-  2: ['push', 'pull', 'legs', 'rest', 'core', 'cardio', 'rest'],
+  1: ['push', 'recovery', 'pull', 'legs', 'core', 'cardio', 'recovery'],
+  2: ['push', 'pull', 'legs', 'recovery', 'core', 'cardio', 'rest'],
   3: ['push', 'pull', 'legs', 'core', 'cardio', 'rest', 'rest']
 };
 
@@ -35,7 +38,11 @@ const WORKOUT_META = {
   },
   rest: {
     label: 'Rest Day',
-    subtitle: 'Recovery and preparation'
+    subtitle: 'Full recovery — sleep, eat, prepare'
+  },
+  recovery: {
+    label: 'Active Recovery',
+    subtitle: 'Mobility, stretching & light movement'
   }
 };
 
@@ -168,6 +175,38 @@ const EXERCISES = {
       heavy: { sets: 2, reps: '45-60s', rest: 60 }
     }
   ],
+  recovery: [
+    {
+      name: 'Cat-Cow',
+      light: { sets: 2, reps: '10 reps', rest: 0 },
+      heavy: { sets: 2, reps: '10 reps', rest: 0 }
+    },
+    {
+      name: "World's Greatest Stretch",
+      light: { sets: 2, reps: '5 each side', rest: 0 },
+      heavy: { sets: 2, reps: '5 each side', rest: 0 }
+    },
+    {
+      name: 'Hip Flexor Lunge Stretch',
+      light: { sets: 2, reps: '45s each side', rest: 0 },
+      heavy: { sets: 2, reps: '60s each side', rest: 0 }
+    },
+    {
+      name: 'Thread the Needle',
+      light: { sets: 2, reps: '30s each side', rest: 0 },
+      heavy: { sets: 2, reps: '45s each side', rest: 0 }
+    },
+    {
+      name: 'Dead Hangs',
+      light: { sets: 3, reps: '20-30s', rest: 30 },
+      heavy: { sets: 3, reps: '30-45s', rest: 30 }
+    },
+    {
+      name: 'Easy Walk / Light Bike',
+      light: { sets: 1, reps: '20-30 min', rest: 0 },
+      heavy: { sets: 1, reps: '30-40 min', rest: 0 }
+    }
+  ],
   cardio: [
     {
       name: 'Warm-up Jog',
@@ -223,6 +262,11 @@ const WARMUP = {
     { name: 'Leg Swings', duration: '10 each leg', notes: 'Front/back and lateral' },
     { name: 'High Knees', duration: '30s', notes: 'Light pace, progressive' },
     { name: 'Butt Kicks', duration: '30s', notes: 'Easy, focus on full hip extension' }
+  ],
+  recovery: [
+    { name: 'Box Breathing', duration: '2 min', notes: 'In 4 counts, hold 4, out 4, hold 4 — calm the nervous system' },
+    { name: 'Neck Rolls', duration: '5 each direction', notes: 'Slow and gentle, ear toward shoulder' },
+    { name: 'Shoulder Rolls', duration: '10 each direction', notes: 'Full range, backward then forward' }
   ]
 };
 
@@ -258,6 +302,12 @@ const COOLDOWN = {
     { name: 'Hip Flexor Lunge Stretch', duration: '45s each side', notes: 'Low lunge, hips pressing forward' },
     { name: 'Seated Hamstring Stretch', duration: '45s each side', notes: 'Long exhale into the stretch' },
     { name: 'Chest Opener', duration: '60s', notes: 'Arms wide, chin up, slow deep breaths' }
+  ],
+  recovery: [
+    { name: 'Full Body Shake-out', duration: '30s', notes: 'Relax everything, literally shake it loose' },
+    { name: 'Supine Spinal Twist', duration: '60s each side', notes: 'On your back, knee crosses over, breathe deep' },
+    { name: "Child's Pose", duration: '90s', notes: 'Arms forward, breathe into your lower back' },
+    { name: 'Legs Up the Wall', duration: '3 min', notes: 'Feet up, passive — best recovery position there is' }
   ]
 };
 

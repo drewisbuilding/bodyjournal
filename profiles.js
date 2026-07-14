@@ -344,6 +344,19 @@ function getPersonalizedExercises(workoutType, intensity, userProfile) {
     (has('pull_up_bar') || has('bench'))                 ? 'home_minimal' :
                                                            'home_minimal';
 
+  // Recovery day uses fixed exercises — no equipment variation needed
+  if (workoutType === 'recovery') {
+    return EXERCISES.recovery.map(ex => ({
+      name: ex.name,
+      target: ex[intensity],
+      sets: Array(ex[intensity].sets).fill(null).map(() => ({
+        weight: '',
+        reps: ex[intensity].reps,
+        done: false
+      }))
+    }));
+  }
+
   const exerciseKeys = {
     push: ['push_primary_press', 'push_incline', 'push_secondary_horizontal', 'push_secondary_overhead', 'push_tertiary_lateral_raise', 'push_tertiary_triceps'],
     pull: ['pull_primary_vertical', 'pull_primary_horizontal', 'pull_secondary_vertical', 'pull_secondary_vertical_narrow', 'pull_secondary_face_pull', 'pull_tertiary_biceps'],
