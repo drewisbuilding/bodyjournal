@@ -1,4 +1,4 @@
-const CACHE_NAME = 'body-journal-v9';
+const CACHE_NAME = 'body-journal-v10';
 const ASSETS_TO_CACHE = [
   './',
   'index.html',

@@ -1161,8 +1161,7 @@ class App {
   // ── Auth ────────────────────────────────────────────────
 
   async init() {
-    if (!isSupabaseConfigured()) {
-      // No Supabase — fall back to pure localStorage mode
+    if (!isSupabaseConfigured() || !REQUIRE_AUTH) {
       this.authState = 'app';
       this.initLocal();
       this.render();
