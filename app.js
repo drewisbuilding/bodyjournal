@@ -205,8 +205,11 @@ class App {
     this.closeSettings();
   }
 
-  resetProgress() {
+  async resetProgress() {
     if (confirm('Delete all progress and start over? This cannot be undone.')) {
+      if (this.authUser && isSupabaseConfigured()) {
+        await dbDeleteAllUserData(this.authUser.id);
+      }
       localStorage.clear();
       location.reload();
     }

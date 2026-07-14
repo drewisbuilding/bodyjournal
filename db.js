@@ -61,6 +61,11 @@ async function dbGetProfile(userId) {
   };
 }
 
+async function dbDeleteAllUserData(userId) {
+  await getClient().from('workout_logs').delete().eq('user_id', userId);
+  await getClient().from('profiles').delete().eq('id', userId);
+}
+
 async function dbSaveProfile(userId, profile, startDate) {
   const { error } = await getClient()
     .from('profiles')
