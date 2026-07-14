@@ -18,6 +18,7 @@ class App {
         name: '',
         weight: '',
         age: '',
+        gender: '',
         fitnessLevel: 'beginner',
         equipment: [],
         goal: 'build',
@@ -63,6 +64,7 @@ class App {
       name: d.name || '',
       weight: d.weight || '',
       age: d.age || '',
+      gender: d.gender || '',
       fitnessLevel,
       equipment,
       goal
@@ -191,7 +193,7 @@ class App {
   }
 
   updateProfile(fitnessLevel, equipment, goal) {
-    const profile = { fitnessLevel, equipment, goal };
+    const profile = { ...this.state.profile, fitnessLevel, equipment, goal };
     this.saveProfile(profile);
     this.loadLog();
     this.closeSettings();
@@ -266,7 +268,7 @@ class App {
       if (log && JSON.parse(log).completed) completedCount++;
     }
 
-    const phase = PHASES[dayInfo ? dayInfo.phase - 1 : 0];
+    const tp = typeof getTrainingProfile === 'function' ? getTrainingProfile(this.state.profile) : null;
 
     return `
       <div class="home-view">
@@ -274,6 +276,18 @@ class App {
           <div class="home-greeting-name">${greeting}${name ? `, ${name}` : ''}</div>
           <div class="home-greeting-date">${dateStr}</div>
         </div>
+
+        ${tp ? `
+        <div class="home-archetype-card">
+          <div class="home-archetype-label">${tp.archetypeLabel}</div>
+          <div class="home-archetype-desc">${tp.archetypeDesc}</div>
+          <div class="home-archetype-tags">
+            <span class="home-archetype-tag">${tp.repRange[0]}–${tp.repRange[1]} reps</span>
+            <span class="home-archetype-tag">${tp.restSeconds}s rest</span>
+            <span class="home-archetype-tag">${tp.ageGroup === 'masters' ? '45+ protocol' : tp.gluteFocus ? 'posterior focus' : tp.cardioPreference === 'hiit' ? 'HIIT cardio' : tp.cardioPreference === 'low_impact' ? 'low impact' : 'mixed cardio'}</span>
+          </div>
+        </div>
+        ` : ''}
 
         <div class="home-progress-block">
           <div class="home-progress-meta">
@@ -481,6 +495,14 @@ class App {
               <div class="ob-intro-field">
                 <label class="ob-field-label">Age</label>
                 <input type="number" id="ob-age" class="ob-field-input" placeholder="30" inputmode="numeric" value="${d.age}">
+              </div>
+            </div>
+            <div class="ob-intro-field ob-intro-full">
+              <label class="ob-field-label">Biological Sex <span class="ob-field-optional">(used to personalize your program)</span></label>
+              <div class="ob-gender-row">
+                <button class="ob-gender-btn ${d.gender === 'male'   ? 'selected' : ''}" data-gender="male">Male</button>
+                <button class="ob-gender-btn ${d.gender === 'female' ? 'selected' : ''}" data-gender="female">Female</button>
+                <button class="ob-gender-btn ${d.gender === 'other'  ? 'selected' : ''}" data-gender="other">Prefer not to say</button>
               </div>
             </div>
           </div>
@@ -950,6 +972,15 @@ class App {
           if (icon) icon.textContent = '';
           this.state.obData.equipment = this.state.obData.equipment.filter(v => v !== value);
         }
+        return;
+      }
+
+      // Gender selector
+      const genderBtn = e.target.closest('[data-gender]');
+      if (genderBtn) {
+        app.querySelectorAll('[data-gender]').forEach(el => el.classList.remove('selected'));
+        genderBtn.classList.add('selected');
+        this.state.obData.gender = genderBtn.dataset.gender;
         return;
       }
 

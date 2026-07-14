@@ -319,7 +319,78 @@ const DIFFICULTY_TIERS = {
   }
 };
 
-// Map old EXERCISES format to new system
+// Derive a training archetype from the user's full profile
+function getTrainingProfile(userProfile) {
+  const age = parseInt(userProfile.age) || 30;
+  const gender = userProfile.gender || '';
+  const goal = userProfile.goal || 'build';
+  const level = userProfile.fitnessLevel || 'beginner';
+
+  const ageGroup = age < 30 ? 'young' : age < 45 ? 'adult' : 'masters';
+
+  // Rep range: experience × goal matrix
+  const repRangeMatrix = {
+    beginner:     { build: [10, 12], cut: [15, 20], endurance: [20, 25] },
+    intermediate: { build: [8,  10], cut: [12, 15], endurance: [15, 20] },
+    advanced:     { build: [6,  8],  cut: [10, 12], endurance: [12, 15] }
+  };
+
+  // Rest (seconds): experience × goal
+  const restMatrix = {
+    beginner:     { build: 90, cut: 60, endurance: 45 },
+    intermediate: { build: 75, cut: 45, endurance: 30 },
+    advanced:     { build: 60, cut: 30, endurance: 20 }
+  };
+
+  const repRange = (repRangeMatrix[level] || repRangeMatrix.beginner)[goal] || [12, 15];
+  let restSeconds = (restMatrix[level] || restMatrix.beginner)[goal] || 75;
+
+  if (ageGroup === 'masters') restSeconds += 20;
+
+  // Emphasis: glute/posterior chain for female users building or cutting
+  const gluteFocus = gender === 'female' && (goal === 'build' || goal === 'cut');
+
+  // Cardio style
+  const cardioPreference =
+    ageGroup === 'masters'                    ? 'low_impact'   :
+    goal === 'endurance'                      ? 'steady_state' :
+    goal === 'cut' && ageGroup !== 'masters'  ? 'hiit'         :
+                                                'mixed';
+
+  // Volume: masters carry slightly less raw volume
+  const volMod = ageGroup === 'masters' ? 0.85 : 1.0;
+
+  // Archetype label + coaching note
+  let archetypeLabel, archetypeDesc;
+  if (ageGroup === 'masters' && goal === 'build') {
+    archetypeLabel = 'Masters Builder';
+    archetypeDesc = 'Longer rest, controlled volume, joint-friendly compound lifts.';
+  } else if (ageGroup === 'masters') {
+    archetypeLabel = 'Masters Athlete';
+    archetypeDesc = 'Low-impact cardio, mobility priority, sustainable training load.';
+  } else if (gluteFocus && goal === 'build') {
+    archetypeLabel = 'Glute & Strength';
+    archetypeDesc = 'Hip hinges and posterior chain lead your leg sessions.';
+  } else if (gluteFocus && goal === 'cut') {
+    archetypeLabel = 'Lean & Sculpted';
+    archetypeDesc = 'High reps, glute focus, HIIT-forward cardio sessions.';
+  } else if (goal === 'build') {
+    archetypeLabel = 'Strength Builder';
+    archetypeDesc = 'Compound-first programming with progressive overload each week.';
+  } else if (goal === 'cut') {
+    archetypeLabel = 'Fat Loss Focus';
+    archetypeDesc = 'HIIT cardio, shorter rest, higher reps to maximize burn.';
+  } else if (goal === 'endurance') {
+    archetypeLabel = 'Endurance Athlete';
+    archetypeDesc = 'Volume and aerobic capacity over raw strength output.';
+  } else {
+    archetypeLabel = 'Athletic Build';
+    archetypeDesc = 'Balanced strength and conditioning across all sessions.';
+  }
+
+  return { ageGroup, gender, goal, gluteFocus, cardioPreference, repRange, restSeconds, volMod, archetypeLabel, archetypeDesc };
+}
+
 function getPersonalizedExercises(workoutType, intensity, userProfile) {
   if (!userProfile) return null;
   if (!userProfile.fitnessLevel) {
@@ -333,7 +404,7 @@ function getPersonalizedExercises(workoutType, intensity, userProfile) {
     return null;
   }
 
-  const eq = userProfile.equipment;
+  const eq = userProfile.equipment || [];
   const has = (item) => eq.includes(item);
   const equipmentSet =
     eq.length === 0                                      ? 'home_minimal' :
@@ -344,7 +415,7 @@ function getPersonalizedExercises(workoutType, intensity, userProfile) {
     (has('pull_up_bar') || has('bench'))                 ? 'home_minimal' :
                                                            'home_minimal';
 
-  // Recovery day uses fixed exercises — no equipment variation needed
+  // Recovery day — fixed exercises, no equipment variation
   if (workoutType === 'recovery') {
     return EXERCISES.recovery.map(ex => ({
       name: ex.name,
@@ -357,19 +428,41 @@ function getPersonalizedExercises(workoutType, intensity, userProfile) {
     }));
   }
 
+  const tp = getTrainingProfile(userProfile);
+  const tierConfig = intensity === 'light' ? tier.light : tier.heavy;
+
+  // Sets: tier setsMultiplier × age-based volMod
+  const baseSets = Math.max(2, Math.round(3 * tierConfig.setsMultiplier * tp.volMod));
+
+  // Reps: smart profile base, shifted by light/heavy toggle
+  const repShift = intensity === 'light' ? 2 : -2;
+  const repLow = Math.max(5, tp.repRange[0] + repShift);
+  const repHigh = Math.max(6, tp.repRange[1] + repShift);
+  const repStr = `${repLow}-${repHigh}`;
+
+  // Rest: smart profile base, shifted by intensity
+  const restSecs = Math.max(15, tp.restSeconds + (intensity === 'light' ? 15 : -10));
+
+  // Exercise order — adjusted by training profile emphasis
   const exerciseKeys = {
     push: ['push_primary_press', 'push_incline', 'push_secondary_horizontal', 'push_secondary_overhead', 'push_tertiary_lateral_raise', 'push_tertiary_triceps'],
     pull: ['pull_primary_vertical', 'pull_primary_horizontal', 'pull_secondary_vertical', 'pull_secondary_vertical_narrow', 'pull_secondary_face_pull', 'pull_tertiary_biceps'],
-    legs: ['legs_primary_lower', 'legs_primary_posterior', 'legs_secondary_lunge', 'legs_secondary_quad_isolation', 'legs_secondary_hamstring_isolation', 'legs_tertiary_calf'],
+    legs: tp.gluteFocus
+      // Posterior-chain first: RDL → ham curl → lunge → squat → quad iso → calf
+      ? ['legs_primary_posterior', 'legs_secondary_hamstring_isolation', 'legs_secondary_lunge', 'legs_primary_lower', 'legs_secondary_quad_isolation', 'legs_tertiary_calf']
+      // Standard: squat → deadlift → lunge → quad → ham → calf
+      : ['legs_primary_lower', 'legs_primary_posterior', 'legs_secondary_lunge', 'legs_secondary_quad_isolation', 'legs_secondary_hamstring_isolation', 'legs_tertiary_calf'],
     core: ['core_compound', 'core_stability', 'core_anti_rotation', 'core_rotation', 'core_compound', 'core_stability'],
-    cardio: ['cardio_steady_state', 'cardio_hiit', 'cardio_incline', 'cardio_low_impact', 'cardio_steady_state', 'cardio_hiit'],
+    cardio:
+      tp.cardioPreference === 'low_impact'   ? ['cardio_low_impact',   'cardio_steady_state', 'cardio_incline', 'cardio_hiit',          'cardio_low_impact',   'cardio_steady_state'] :
+      tp.cardioPreference === 'hiit'         ? ['cardio_hiit',         'cardio_steady_state', 'cardio_incline', 'cardio_low_impact',    'cardio_hiit',         'cardio_steady_state'] :
+      tp.cardioPreference === 'steady_state' ? ['cardio_steady_state', 'cardio_incline',      'cardio_low_impact', 'cardio_steady_state', 'cardio_incline',     'cardio_hiit'        ] :
+                                               ['cardio_steady_state', 'cardio_hiit',         'cardio_incline', 'cardio_low_impact',    'cardio_steady_state', 'cardio_hiit'        ],
   };
 
   if (!exerciseKeys[workoutType]) return [];
 
-  const tierConfig = intensity === 'light' ? tier.light : tier.heavy;
   const exercises = [];
-
   for (const exerciseKey of exerciseKeys[workoutType]) {
     const libraryExercise = EXERCISE_LIBRARY[exerciseKey];
     if (!libraryExercise) continue;
@@ -377,21 +470,10 @@ function getPersonalizedExercises(workoutType, intensity, userProfile) {
     const variantKey = libraryExercise.defaults[equipmentSet] || 'home_minimal';
     const variant = libraryExercise.variants[variantKey];
 
-    const baseReps = tierConfig.repRange;
-    const baseSets = Math.round(3 * tierConfig.setsMultiplier);
-
     exercises.push({
       name: variant.name,
-      target: {
-        sets: baseSets,
-        reps: `${baseReps[0]}-${baseReps[1]}`,
-        rest: tierConfig.restSeconds
-      },
-      sets: Array(baseSets).fill(null).map(() => ({
-        weight: '',
-        reps: `${baseReps[0]}-${baseReps[1]}`,
-        done: false
-      }))
+      target: { sets: baseSets, reps: repStr, rest: restSecs },
+      sets: Array(baseSets).fill(null).map(() => ({ weight: '', reps: repStr, done: false }))
     });
   }
 
