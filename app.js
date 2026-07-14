@@ -26,7 +26,7 @@ class App {
         fitnessLevel: 'beginner',
         equipment: [],
         goal: 'build',
-        startDate: new Date().toISOString().split('T')[0]
+        startDate: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })()
       }
     };
 
@@ -48,12 +48,23 @@ class App {
     }
   }
 
+  // Parse "YYYY-MM-DD" as local midnight (not UTC) to avoid timezone offset
+  parseLocalDate(str) {
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  // Return today's date as "YYYY-MM-DD" in local time
+  localDateStr(date) {
+    const d = date || new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
   calcCurrentDay(startDate) {
     if (!startDate) return 1;
-    const start = new Date(startDate);
+    const start = this.parseLocalDate(startDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    start.setHours(0, 0, 0, 0);
     const diff = Math.floor((today - start) / 86400000);
     return Math.max(1, Math.min(90, diff + 1));
   }
@@ -71,7 +82,7 @@ class App {
     };
     this.saveProfile(profile);
     this.state.showOnboarding = false;
-    this.state.startDate = startDate || new Date().toISOString().split('T')[0];
+    this.state.startDate = startDate || this.localDateStr();
     this.state.currentDay = this.calcCurrentDay(this.state.startDate);
     this.state.viewDay = this.state.currentDay;
     this.saveMeta();
@@ -249,7 +260,7 @@ class App {
 
   getDateForDay(dayNum) {
     if (!this.state.startDate) return null;
-    const date = new Date(this.state.startDate);
+    const date = this.parseLocalDate(this.state.startDate);
     date.setDate(date.getDate() + dayNum - 1);
     return date;
   }
@@ -587,8 +598,8 @@ class App {
   }
 
   renderObStartDate() {
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    const today = this.localDateStr();
+    const yesterday = this.localDateStr(new Date(Date.now() - 86400000));
     const todayFmt = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
     const yestFmt = new Date(Date.now() - 86400000).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
     const current = this.state.obData.startDate;
@@ -628,7 +639,7 @@ class App {
     const tierDesc = DIFFICULTY_TIERS[this.state.profile.fitnessLevel];
     const goalMsg = getGoalMessage(this.state.profile.goal);
     const startDateStr = this.state.startDate
-      ? new Date(this.state.startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      ? this.parseLocalDate(this.state.startDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
       : 'Not set';
 
     return `
