@@ -277,6 +277,7 @@ class App {
   }
 
   renderWarmup(workoutType) {
+    if (typeof WARMUP === 'undefined') return '';
     const warmup = WARMUP[workoutType];
     if (!warmup) return '';
     return `
@@ -302,6 +303,7 @@ class App {
   }
 
   renderCooldown(workoutType) {
+    if (typeof COOLDOWN === 'undefined') return '';
     const cooldown = COOLDOWN[workoutType];
     if (!cooldown) return '';
     return `
