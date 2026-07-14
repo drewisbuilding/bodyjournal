@@ -623,8 +623,8 @@ class App {
       : 'Not set';
 
     return `
-      <div class="modal-overlay" data-action="close-settings">
-        <div class="modal settings-modal" onclick="event.stopPropagation()">
+      <div class="modal-overlay">
+        <div class="modal settings-modal">
           <div class="modal-header">
             <h2>Profile Settings</h2>
             <button class="modal-close" data-action="close-settings">✕</button>
@@ -1025,7 +1025,16 @@ class App {
 
   attachSettingsListeners() {
     const app = document.getElementById('app');
-    app.addEventListener('click', (e) => {
+    const overlay = app.querySelector('.modal-overlay');
+    const modal = app.querySelector('.settings-modal');
+
+    // Close when clicking the backdrop (but not the modal content)
+    overlay?.addEventListener('click', (e) => {
+      if (e.target === overlay) this.closeSettings();
+    });
+
+    // Handle action buttons inside the modal
+    modal?.addEventListener('click', (e) => {
       const action = e.target.closest('[data-action]')?.dataset.action;
       if (action === 'close-settings') {
         this.closeSettings();
