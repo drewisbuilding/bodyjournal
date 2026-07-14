@@ -6,7 +6,7 @@ class App {
       currentDay: 1,
       startDate: null,
       intensity: 'light',
-      view: 'today',
+      view: 'home',
       viewDay: 1,
       log: null,
       profile: null,
@@ -15,6 +15,9 @@ class App {
       showEditProfile: false,
       obStep: 1,
       obData: {
+        name: '',
+        weight: '',
+        age: '',
         fitnessLevel: 'beginner',
         equipment: [],
         goal: 'build',
@@ -55,7 +58,15 @@ class App {
   }
 
   completeOnboarding(fitnessLevel, equipment, goal, startDate) {
-    const profile = { fitnessLevel, equipment, goal };
+    const d = this.state.obData;
+    const profile = {
+      name: d.name || '',
+      weight: d.weight || '',
+      age: d.age || '',
+      fitnessLevel,
+      equipment,
+      goal
+    };
     this.saveProfile(profile);
     this.state.showOnboarding = false;
     this.state.startDate = startDate || new Date().toISOString().split('T')[0];
@@ -135,6 +146,9 @@ class App {
       this.state.viewDay = this.state.currentDay;
       this.loadLog();
     }
+    if (view === 'home') {
+      this.state.viewDay = this.state.currentDay;
+    }
     this.render();
   }
 
@@ -160,7 +174,7 @@ class App {
 
   jumpToToday() {
     this.state.viewDay = this.state.currentDay;
-    this.state.view = 'today';
+    this.state.view = 'home';
     this.loadLog();
     this.render();
   }
@@ -235,6 +249,84 @@ class App {
 
   formatDateShort(date) {
     return `${date.getMonth() + 1}/${date.getDate()}`;
+  }
+
+  renderHomeView() {
+    const name = this.state.profile?.name;
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const dayInfo = getDayInfo(this.state.currentDay);
+    const date = this.getDateForDay(this.state.currentDay);
+    const dateStr = date ? this.formatDateLong(date) : '';
+    const pct = Math.round((this.state.currentDay / 90) * 100);
+
+    let completedCount = 0;
+    for (let d = 1; d < this.state.currentDay; d++) {
+      const log = localStorage.getItem(`bj_day_${d}_light`) || localStorage.getItem(`bj_day_${d}_heavy`);
+      if (log && JSON.parse(log).completed) completedCount++;
+    }
+
+    const phase = PHASES[dayInfo ? dayInfo.phase - 1 : 0];
+
+    return `
+      <div class="home-view">
+        <div class="home-greeting">
+          <div class="home-greeting-name">${greeting}${name ? `, ${name}` : ''}</div>
+          <div class="home-greeting-date">${dateStr}</div>
+        </div>
+
+        <div class="home-progress-block">
+          <div class="home-progress-meta">
+            <span>Day ${this.state.currentDay} of 90</span>
+            <span>${pct}% complete</span>
+          </div>
+          <div class="home-progress-bar-track">
+            <div class="home-progress-bar-fill" style="width:${pct}%"></div>
+          </div>
+          <div class="home-phase-tag">${dayInfo?.phaseName} Phase · Week ${dayInfo?.weekNumber} · ${90 - this.state.currentDay} days left</div>
+        </div>
+
+        <button class="home-today-card" data-action="set-view" data-view="today">
+          <div class="home-today-eyebrow">Today's Workout</div>
+          <div class="home-today-title">${WORKOUT_META[dayInfo?.workoutType]?.label}</div>
+          <div class="home-today-sub">${WORKOUT_META[dayInfo?.workoutType]?.subtitle}</div>
+          <div class="home-today-arrow">Start →</div>
+        </button>
+
+        <div class="home-stats-row">
+          <div class="home-stat">
+            <div class="home-stat-val">${completedCount}</div>
+            <div class="home-stat-label">Days Done</div>
+          </div>
+          <div class="home-stat">
+            <div class="home-stat-val">${this.state.currentDay}</div>
+            <div class="home-stat-label">Current Day</div>
+          </div>
+          <div class="home-stat">
+            <div class="home-stat-val">${90 - this.state.currentDay}</div>
+            <div class="home-stat-label">Days Left</div>
+          </div>
+        </div>
+
+        ${this.state.profile?.weight ? `
+          <div class="home-profile-card">
+            <div class="home-profile-row">
+              <span class="home-profile-label">Starting Weight</span>
+              <span class="home-profile-val">${this.state.profile.weight} lbs</span>
+            </div>
+            ${this.state.profile.age ? `
+            <div class="home-profile-row">
+              <span class="home-profile-label">Age</span>
+              <span class="home-profile-val">${this.state.profile.age}</span>
+            </div>` : ''}
+            <div class="home-profile-row">
+              <span class="home-profile-label">Goal</span>
+              <span class="home-profile-val">${this.state.profile.goal === 'build' ? 'Build Muscle' : this.state.profile.goal === 'cut' ? 'Get Lean' : 'Build Endurance'}</span>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
   }
 
   renderTodayView() {
@@ -365,16 +457,32 @@ class App {
   }
 
   renderObWelcome() {
+    const d = this.state.obData;
     return `
       <div class="ob-screen ob-welcome">
         <div class="ob-welcome-body">
           <div class="ob-welcome-mark">BJ</div>
           <div class="ob-welcome-title">Body Journal</div>
-          <div class="ob-welcome-sub">Your personal 90-day program — built around your body, your equipment, your schedule. Show up daily and the program handles the rest.</div>
-          <div class="ob-welcome-pills">
-            <span class="ob-pill">90 Days</span>
-            <span class="ob-pill">3 Phases</span>
-            <span class="ob-pill">Personalized</span>
+          <div class="ob-welcome-sub">Your personal 90-day program — built around your body, your equipment, your goals.</div>
+
+          <div class="ob-intro-fields">
+            <div class="ob-intro-field ob-intro-full">
+              <label class="ob-field-label">First Name</label>
+              <input type="text" id="ob-name" class="ob-field-input" placeholder="Your name" autocomplete="given-name" value="${d.name}">
+            </div>
+            <div class="ob-intro-row">
+              <div class="ob-intro-field">
+                <label class="ob-field-label">Current Weight</label>
+                <div class="ob-input-unit">
+                  <input type="number" id="ob-weight" class="ob-field-input" placeholder="185" inputmode="decimal" value="${d.weight}">
+                  <span class="ob-unit">lbs</span>
+                </div>
+              </div>
+              <div class="ob-intro-field">
+                <label class="ob-field-label">Age</label>
+                <input type="number" id="ob-age" class="ob-field-input" placeholder="30" inputmode="numeric" value="${d.age}">
+              </div>
+            </div>
           </div>
         </div>
         <div class="ob-footer">
@@ -760,22 +868,28 @@ class App {
       return;
     }
 
+    const showIntensity = this.state.view !== 'home';
+
     app.innerHTML = `
       <div class="top-bar">
         <div class="tab-switcher">
+          <button class="tab-btn ${this.state.view === 'home' ? 'active' : ''}" data-action="set-view" data-view="home">Home</button>
           <button class="tab-btn ${this.state.view === 'today' ? 'active' : ''}" data-action="set-view" data-view="today">Today</button>
           <button class="tab-btn ${this.state.view === 'calendar' ? 'active' : ''}" data-action="set-view" data-view="calendar">Calendar</button>
         </div>
         <div class="top-bar-right">
+          ${showIntensity ? `
           <div class="intensity-toggle">
-            <button class="intensity-btn light ${this.state.intensity === 'light' ? 'active' : ''}" data-action="set-intensity" data-intensity="light">Light</button>
-            <button class="intensity-btn heavy ${this.state.intensity === 'heavy' ? 'active' : ''}" data-action="set-intensity" data-intensity="heavy">Heavy</button>
-          </div>
+            <button class="intensity-btn light ${this.state.intensity === 'light' ? 'active' : ''}" data-action="set-intensity" data-intensity="light">L</button>
+            <button class="intensity-btn heavy ${this.state.intensity === 'heavy' ? 'active' : ''}" data-action="set-intensity" data-intensity="heavy">H</button>
+          </div>` : ''}
           <button class="btn-settings" data-action="open-settings" title="Profile & Settings">⚙</button>
         </div>
       </div>
       <div class="view-container">
-        ${this.state.view === 'today' ? this.renderTodayView() : this.renderCalendarView()}
+        ${this.state.view === 'home'     ? this.renderHomeView()     : ''}
+        ${this.state.view === 'today'    ? this.renderTodayView()    : ''}
+        ${this.state.view === 'calendar' ? this.renderCalendarView() : ''}
       </div>
     `;
 
@@ -791,6 +905,12 @@ class App {
       if (actionEl) {
         const action = actionEl.dataset.action;
         if (action === 'ob-start') {
+          const nameEl = document.getElementById('ob-name');
+          const weightEl = document.getElementById('ob-weight');
+          const ageEl = document.getElementById('ob-age');
+          if (nameEl) this.state.obData.name = nameEl.value.trim();
+          if (weightEl) this.state.obData.weight = weightEl.value;
+          if (ageEl) this.state.obData.age = ageEl.value;
           this.state.obStep = 2;
           this.render();
           return;
@@ -934,8 +1054,13 @@ class App {
       } else if (action === 'complete-day') {
         this.completeDay();
       } else if (action === 'toggle-set') {
-        this.updateSet(parseInt(target.dataset.exercise), parseInt(target.dataset.set), 'done', null);
-        this.render();
+        const exIdx = parseInt(target.dataset.exercise);
+        const sIdx = parseInt(target.dataset.set);
+        this.updateSet(exIdx, sIdx, 'done', null);
+        // Mutate button directly — no full re-render, scroll position preserved
+        const isDone = this.state.log.exercises[exIdx].sets[sIdx].done;
+        target.classList.toggle('done', isDone);
+        target.textContent = isDone ? '✓' : '';
       } else if (action === 'open-settings') {
         this.openSettings();
       } else if (action === 'toggle-section') {
