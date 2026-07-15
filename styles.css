@@ -386,6 +386,16 @@ body {
   border-color: #c0392b !important;
 }
 
+.auth-error-msg {
+  font-size: 13px;
+  color: #E57373;
+  background-color: rgba(192, 57, 43, 0.12);
+  border: 1px solid rgba(192, 57, 43, 0.35);
+  border-radius: 8px;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
 /* ── End Auth screens ────────────────────────────────── */
 
 /* Top bar */

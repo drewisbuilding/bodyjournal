@@ -5,6 +5,8 @@ class App {
     this.authUser = null;
     this.authState = 'loading'; // 'loading' | 'enter_email' | 'check_email' | 'app'
     this.authEmail = '';
+    this.authError = '';
+    this.authSending = false;
 
     this.state = {
       currentDay: 1,
@@ -1269,13 +1271,34 @@ class App {
     const emailEl = document.getElementById('auth-email');
     const email = emailEl?.value?.trim();
     if (!email || !email.includes('@')) {
-      emailEl?.classList.add('input-error');
+      this.authError = 'Please enter a valid email address.';
+      this.render();
       return;
     }
     this.authEmail = email;
-    const error = await dbSignInWithEmail(email);
+    this.authError = '';
+    this.authSending = true;
+    this.render();
+
+    let error;
+    try {
+      error = await dbSignInWithEmail(email);
+    } catch (e) {
+      error = e;
+    }
+
+    this.authSending = false;
+
     if (error) {
-      this.showStatus('Error: ' + error.message);
+      const msg = error.message || error.error_description || JSON.stringify(error);
+      if (msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('too many')) {
+        this.authError = 'Too many sign-in attempts. Wait a few minutes and try again.';
+      } else if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network')) {
+        this.authError = 'Network error — check your connection. If this keeps happening, the database may be paused. Visit supabase.com to check.';
+      } else {
+        this.authError = msg || 'Something went wrong. Try again.';
+      }
+      this.render();
       return;
     }
     this.authState = 'check_email';
@@ -1314,17 +1337,20 @@ class App {
               <input
                 type="email"
                 id="auth-email"
-                class="ob-field-input"
+                class="ob-field-input ${this.authError ? 'input-error' : ''}"
                 placeholder="you@example.com"
                 inputmode="email"
                 autocomplete="email"
                 value="${this.authEmail}"
               >
             </div>
+            ${this.authError ? `<div class="auth-error-msg">${this.authError}</div>` : ''}
           </div>
         </div>
         <div class="ob-footer">
-          <button class="ob-btn-continue" data-action="auth-send">Send Sign-In Link →</button>
+          <button class="ob-btn-continue" data-action="auth-send" ${this.authSending ? 'disabled' : ''}>
+            ${this.authSending ? 'Sending…' : 'Send Sign-In Link →'}
+          </button>
         </div>
       </div>
     `;
