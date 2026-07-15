@@ -33,12 +33,21 @@ async function dbCheckReachable() {
 // Auth -----------------------------------------------------------------------
 
 async function dbGetSession() {
-  const { data } = await getClient().auth.getSession();
-  return data.session;
+  try {
+    const { data } = await getClient().auth.getSession();
+    return data.session;
+  } catch (e) {
+    console.error('[dbGetSession]', e);
+    return null;
+  }
 }
 
 function dbOnAuthChange(callback) {
-  getClient().auth.onAuthStateChange((_event, session) => callback(session));
+  try {
+    getClient().auth.onAuthStateChange((_event, session) => callback(session));
+  } catch (e) {
+    console.error('[dbOnAuthChange]', e);
+  }
 }
 
 async function dbSignInWithEmail(email) {

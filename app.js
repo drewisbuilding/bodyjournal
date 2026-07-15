@@ -1206,23 +1206,29 @@ class App {
     // Render loading spinner immediately
     this.render();
 
-    // Handle magic link redirect + session changes
-    dbOnAuthChange((session) => {
-      if (session && this.authState !== 'app') {
+    try {
+      dbOnAuthChange((session) => {
+        if (session && this.authState !== 'app') {
+          this.authUser = session.user;
+          this.onSignedIn();
+        } else if (!session && this.authState === 'app') {
+          this.authUser = null;
+          this.authState = 'enter_email';
+          this.render();
+        }
+      });
+
+      const session = await dbGetSession();
+      if (session) {
         this.authUser = session.user;
-        this.onSignedIn();
-      } else if (!session && this.authState === 'app') {
-        this.authUser = null;
+        await this.onSignedIn();
+      } else {
         this.authState = 'enter_email';
         this.render();
       }
-    });
-
-    const session = await dbGetSession();
-    if (session) {
-      this.authUser = session.user;
-      await this.onSignedIn();
-    } else {
+    } catch (e) {
+      console.error('[init]', e);
+      this.authError = `Could not connect to the database. Your Supabase project may be paused — go to supabase.com to restore it.\n\nDetails: ${e.message || e}`;
       this.authState = 'enter_email';
       this.render();
     }
