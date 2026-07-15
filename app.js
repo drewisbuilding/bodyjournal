@@ -1280,6 +1280,15 @@ class App {
     this.authSending = true;
     this.render();
 
+    // Pre-flight: check if Supabase project is reachable at all
+    const reachErr = await dbCheckReachable();
+    if (reachErr) {
+      this.authSending = false;
+      this.authError = `Cannot reach the database — your Supabase project may be paused.\n\nGo to supabase.com → your project → click "Restore project", then try again.\n\nDetails: ${reachErr}`;
+      this.render();
+      return;
+    }
+
     let error;
     try {
       error = await dbSignInWithEmail(email);
@@ -1290,13 +1299,12 @@ class App {
     this.authSending = false;
 
     if (error) {
-      const msg = error.message || error.error_description || JSON.stringify(error);
+      const msg = error.message || error.error_description || error.msg || error.error || JSON.stringify(error);
+      console.error('[auth error full]', error);
       if (msg.toLowerCase().includes('rate limit') || msg.toLowerCase().includes('too many')) {
-        this.authError = 'Too many sign-in attempts. Wait a few minutes and try again.';
-      } else if (msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('network')) {
-        this.authError = 'Network error — check your connection. If this keeps happening, the database may be paused. Visit supabase.com to check.';
+        this.authError = 'Too many sign-in requests. Wait 10–15 minutes and try again.';
       } else {
-        this.authError = msg || 'Something went wrong. Try again.';
+        this.authError = msg || 'Unknown error — check browser console for details.';
       }
       this.render();
       return;

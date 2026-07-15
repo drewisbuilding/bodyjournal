@@ -16,6 +16,20 @@ function getClient() {
   return _client;
 }
 
+// Returns null if reachable, or an error string if not
+async function dbCheckReachable() {
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/auth/v1/health`, {
+      headers: { apikey: SUPABASE_ANON_KEY }
+    });
+    if (resp.ok) return null;
+    const text = await resp.text().catch(() => '');
+    return `HTTP ${resp.status}: ${text.slice(0, 200)}`;
+  } catch (e) {
+    return `Network error: ${e.message}`;
+  }
+}
+
 // Auth -----------------------------------------------------------------------
 
 async function dbGetSession() {
