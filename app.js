@@ -210,11 +210,19 @@ class App {
   }
 
   updateProfile(fitnessLevel, equipment, goal) {
-    const profile = { ...this.state.profile, fitnessLevel, equipment, goal };
+    const prev = this.state.profile;
+    const equipmentChanged = JSON.stringify([...(prev.equipment || [])].sort()) !== JSON.stringify([...equipment].sort());
+    const changed = equipmentChanged || prev.goal !== goal || prev.fitnessLevel !== fitnessLevel;
+
+    const profile = { ...prev, fitnessLevel, equipment, goal };
     this.saveProfile(profile);
-    // Clear cached exercises so the new equipment selection takes effect immediately
-    localStorage.removeItem(`bj_day_${this.state.viewDay}_light`);
-    localStorage.removeItem(`bj_day_${this.state.viewDay}_heavy`);
+
+    // Only wipe cached exercises if something that affects exercise selection changed
+    if (changed) {
+      localStorage.removeItem(`bj_day_${this.state.viewDay}_light`);
+      localStorage.removeItem(`bj_day_${this.state.viewDay}_heavy`);
+    }
+
     this.loadLog();
     this.closeSettings();
   }
@@ -855,14 +863,18 @@ class App {
     const dayButtons = [];
     for (let day = 1; day <= 90; day++) {
       const dayInfo = getDayInfo(day);
-      const key = `bj_day_${day}_${this.state.intensity}`;
-      const log = localStorage.getItem(key);
-      const isCompleted = log ? JSON.parse(log).completed : false;
 
+      // Check both intensities — mark completed if either log is done
+      const parse = (key) => { try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : null; } catch(e) { return null; } };
+      const ll = parse(`bj_day_${day}_light`);
+      const lh = parse(`bj_day_${day}_heavy`);
+      const isCompleted = !!(ll?.completed || lh?.completed);
+
+      // Priority: active viewing (orange) > completed (green) > today-pending (yellow) > rest
       let cssClass = '';
-      if (day === this.state.currentDay) cssClass = 'today';
-      else if (day === this.state.viewDay) cssClass = 'active';
+      if (day === this.state.viewDay) cssClass = 'active';
       else if (isCompleted) cssClass = 'completed';
+      else if (day === this.state.currentDay) cssClass = 'today';
       else if (dayInfo.isRest) cssClass = 'rest';
 
       const date = this.getDateForDay(day);
