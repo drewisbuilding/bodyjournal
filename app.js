@@ -116,6 +116,15 @@ class App {
     }
   }
 
+  changeStartDate(dateStr) {
+    if (!dateStr) return;
+    this.state.startDate = dateStr;
+    this.state.currentDay = this.calcCurrentDay(dateStr);
+    this.state.viewDay = this.state.currentDay;
+    this.saveMeta();
+    this.closeSettings();
+  }
+
   saveMeta() {
     localStorage.setItem('bj_meta', JSON.stringify({
       startDate: this.state.startDate,
@@ -720,7 +729,16 @@ class App {
             <div class="setting-section">
               <h3>Progress</h3>
               <div class="progress-info">
-                <div>Started: <strong>${startDateStr}</strong></div>
+                <div class="start-date-row">
+                  <span>Day 1 was</span>
+                  <input
+                    type="date"
+                    id="settings-start-date"
+                    class="settings-date-input"
+                    value="${this.state.startDate || this.localDateStr()}"
+                    max="${this.localDateStr()}"
+                  >
+                </div>
                 <div>Current Day: <strong>${this.state.currentDay} / 90</strong></div>
                 <div>${Math.round((this.state.currentDay / 90) * 100)}% complete</div>
               </div>
@@ -1155,10 +1173,14 @@ class App {
       }
     });
 
-    // Import file input
-    const importInput = modal?.querySelector('#import-file');
-    importInput?.addEventListener('change', (e) => {
-      if (e.target.files[0]) this.importData(e.target.files[0]);
+    // Start date correction
+    modal?.addEventListener('change', (e) => {
+      if (e.target.id === 'settings-start-date') {
+        this.changeStartDate(e.target.value);
+      }
+      if (e.target.id === 'import-file' && e.target.files[0]) {
+        this.importData(e.target.files[0]);
+      }
     });
   }
 
