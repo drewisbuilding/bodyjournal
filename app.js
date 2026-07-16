@@ -928,12 +928,17 @@ class App {
       const lh = parse(`bj_day_${day}_heavy`);
       const isCompleted = !!(ll?.completed || lh?.completed);
 
-      // Priority: active viewing (orange) > completed (green) > today-pending (yellow) > rest
+      const isPast = day < this.state.currentDay;
+      const isFuture = day > this.state.currentDay;
+
       let cssClass = '';
-      if (day === this.state.viewDay) cssClass = 'active';
-      else if (isCompleted) cssClass = 'completed';
+      if (day === this.state.viewDay)       cssClass = 'active';
+      else if (isCompleted)                  cssClass = 'completed';
       else if (day === this.state.currentDay) cssClass = 'today';
-      else if (dayInfo.isRest) cssClass = 'rest';
+      else if (isPast && dayInfo.isRest)     cssClass = 'past rest';
+      else if (isPast)                       cssClass = 'past';
+      else if (isFuture && dayInfo.isRest)   cssClass = 'rest';
+      // else: future workout day — default neutral styling
 
       const date = this.getDateForDay(day);
       const dateLabel = date ? this.formatDateShort(date) : '';
@@ -959,16 +964,16 @@ class App {
             <span>Today</span>
           </div>
           <div class="legend-item">
-            <div class="legend-box" style="background-color:var(--orange-dim);border:1px solid var(--orange)"></div>
-            <span>Viewing</span>
-          </div>
-          <div class="legend-item">
             <div class="legend-box" style="background-color:var(--green-dim);border:1px solid var(--green)"></div>
             <span>Completed</span>
           </div>
           <div class="legend-item">
-            <div class="legend-box" style="background-color:var(--bg);border:1px solid var(--border)"></div>
-            <span>Rest Day</span>
+            <div class="legend-box" style="background-color:var(--orange-dim);border:1px solid var(--orange)"></div>
+            <span>Viewing</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-box" style="background-color:var(--bg);border:1px solid var(--border);opacity:0.4"></div>
+            <span>Missed / Rest</span>
           </div>
         </div>
       </div>

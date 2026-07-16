@@ -745,6 +745,14 @@ body {
 .day-button.rest {
   background-color: var(--bg);
   color: var(--ink-faint);
+  border-color: var(--border);
+}
+
+.day-button.past {
+  background-color: var(--bg);
+  color: var(--ink-faint);
+  border-color: var(--border);
+  opacity: 0.45;
 }
 
 .day-button.today {
