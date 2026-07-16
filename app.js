@@ -244,6 +244,39 @@ class App {
     this.showStatus('Saved');
   }
 
+  exportData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.startsWith('bj_')) data[key] = localStorage.getItem(key);
+    }
+    const blob = new Blob([JSON.stringify({ v: 1, exported: new Date().toISOString(), data }, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bodyjournal-backup-${this.localDateStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.closeSettings();
+  }
+
+  importData(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const { data } = JSON.parse(e.target.result);
+        if (!data) throw new Error('Invalid backup file');
+        Object.entries(data).forEach(([k, v]) => {
+          if (k.startsWith('bj_')) localStorage.setItem(k, v);
+        });
+        location.reload();
+      } catch {
+        this.showStatus('Import failed — invalid file');
+      }
+    };
+    reader.readAsText(file);
+  }
+
   completeDay() {
     if (!this.state.log) return;
     this.state.log.completed = true;
@@ -695,6 +728,11 @@ class App {
 
             <div class="setting-actions">
               <button class="btn secondary" data-action="edit-profile">Edit Profile</button>
+              <button class="btn secondary" data-action="export-data">Export Backup</button>
+              <label class="btn secondary import-label">
+                Import Backup
+                <input type="file" accept=".json" id="import-file" style="display:none">
+              </label>
               <button class="btn danger" data-action="reset-progress">Reset Progress</button>
             </div>
 
@@ -1108,11 +1146,19 @@ class App {
         this.state.showEditProfile = true;
         this.state.showSettings = false;
         this.render();
+      } else if (action === 'export-data') {
+        this.exportData();
       } else if (action === 'reset-progress') {
         this.resetProgress();
       } else if (action === 'sign-out') {
         this.signOut();
       }
+    });
+
+    // Import file input
+    const importInput = modal?.querySelector('#import-file');
+    importInput?.addEventListener('change', (e) => {
+      if (e.target.files[0]) this.importData(e.target.files[0]);
     });
   }
 

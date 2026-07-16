@@ -1647,6 +1647,11 @@ body {
   border-top: 1px solid var(--border);
 }
 
+.import-label {
+  text-align: center;
+  cursor: pointer;
+}
+
 .btn.danger {
   background-color: rgba(217, 79, 48, 0.15);
   border-color: rgba(217, 79, 48, 0.3);
